@@ -9,7 +9,7 @@ def load_series(csv_path: str) -> pd.Series:
     df = pd.read_csv(csv_path, parse_dates=["Date"])  # expects Date and Visitor_Count columns
     df = df.sort_values("Date")
     df = df.set_index("Date")
-    y = df["Visitor_Count"].astype(float)
+    y = df["Visitor_Count"].astype(float)  
     y = y.asfreq("D")
     return y
 
