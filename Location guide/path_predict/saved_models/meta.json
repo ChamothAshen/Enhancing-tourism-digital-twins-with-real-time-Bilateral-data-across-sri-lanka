@@ -1,0 +1,13 @@
+{
+  "feature_cols": [
+    "hour",
+    "day_of_week",
+    "current_poi",
+    "current_lat",
+    "current_lon",
+    "current_crowd",
+    "remaining_minutes"
+  ],
+  "target_col": "next_poi",
+  "best_model": "logreg_multinomial"
+}
