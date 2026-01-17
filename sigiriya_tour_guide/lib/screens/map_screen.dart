@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:sigiriya_tour_guide/theme/app_theme.dart';
 import 'dart:math' as math;
+import 'package:flutter_tts/flutter_tts.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -27,6 +28,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   String? _mlLocationName;
   String? _mlDescription;
   bool _isMLProcessing = false;
+  final FlutterTts _flutterTts = FlutterTts();
   // Use your computer's IP address (10.60.14.73) so your phone can reach the server
   final String _apiUrl = "http://10.60.14.73:8000/predict"; 
 
@@ -34,7 +36,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   // Sigiriya Rock coordinates
   static const LatLng sigiriyaRock = LatLng(7.9570, 80.7603);
 
-  // Ordered tourist route - Updated to new high-precision POIs
+  // Ordered tourist route - Aligned with user provided correct locations
   final List<String> _visitingRoute = [
     'Sigiriya Entrance',
     'Bridge over Moat',
@@ -46,17 +48,17 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     'Main Palace',
   ];
 
-  // Tourist attractions - Streamlined for ML Research (Descriptions come from AI model)
+  // Tourist attractions - Synced with ML Model (2nd version updated with precise user coordinates)
   final Map<String, Map<String, dynamic>> _attractions = {
     'Sigiriya Entrance': {
       'position': const LatLng(7.957674546451712, 80.75346579852389),
-      'icon': Icons.login,
-      'category': 'Main Attraction',
+      'icon': Icons.door_front_door,
+      'category': 'Historical Site',
       'visitOrder': 1,
     },
     'Bridge over Moat': {
       'position': const LatLng(7.957759746687992, 80.75360677640833),
-      'icon': Icons.alt_route,
+      'icon': Icons.straighten,
       'category': 'Historical Site',
       'visitOrder': 2,
     },
@@ -68,19 +70,19 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     },
     'Water Fountains': {
       'position': const LatLng(7.957264470805178, 80.75561410058413),
-      'icon': Icons.waves,
-      'category': 'Main Attraction',
+      'icon': Icons.opacity,
+      'category': 'Nature Spot',
       'visitOrder': 4,
     },
     'Summer Palace': {
       'position': const LatLng(7.95658849506351, 80.7561308770434),
-      'icon': Icons.house,
+      'icon': Icons.foundation,
       'category': 'Historical Site',
       'visitOrder': 5,
     },
     'Caves with Inscriptions': {
       'position': const LatLng(7.957884271426544, 80.7578080290472),
-      'icon': Icons.edit,
+      'icon': Icons.architecture,
       'category': 'Historical Site',
       'visitOrder': 6,
     },
@@ -92,7 +94,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     },
     'Main Palace': {
       'position': const LatLng(7.957020481195492, 80.75984744010141),
-      'icon': Icons.account_balance,
+      'icon': Icons.castle,
       'category': 'Main Attraction',
       'visitOrder': 8,
     },
@@ -113,6 +115,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       vsync: this,
     )..repeat();
     _getCurrentLocation();
+    _initTts();
 
     // Auto-fit bounds after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -146,7 +149,22 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   @override
   void dispose() {
     _pulseController.dispose();
+    _flutterTts.stop();
     super.dispose();
+  }
+
+  Future<void> _initTts() async {
+    await _flutterTts.setLanguage("en-US");
+    await _flutterTts.setSpeechRate(0.5);
+    await _flutterTts.setVolume(1.0);
+    await _flutterTts.setPitch(1.0);
+  }
+
+  Future<void> _speak(String text) async {
+    if (text.isNotEmpty) {
+      await _flutterTts.stop();
+      await _flutterTts.speak(text);
+    }
   }
 
   Future<void> _getCurrentLocation() async {
@@ -298,9 +316,16 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        final newLocation = data['location_name'];
+        final newDesc = data['description'];
+
+        if (_mlLocationName != newLocation) {
+          _speak("$newLocation. $newDesc");
+        }
+
         setState(() {
-          _mlLocationName = data['location_name'];
-          _mlDescription = data['description'];
+          _mlLocationName = newLocation;
+          _mlDescription = newDesc;
           _isMLProcessing = false;
         });
       } else {
@@ -454,14 +479,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                             ],
                           ),
                           child: Center(
-                            child: Text(
-                              '$visitOrder',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: isCurrentStep ? 18 : 15,
-                                height: 1.0,
-                              ),
+                            child: Icon(
+                              data['icon'] as IconData,
+                              color: Colors.white,
+                              size: isCurrentStep ? 24 : 20,
                             ),
                           ),
                         ),
