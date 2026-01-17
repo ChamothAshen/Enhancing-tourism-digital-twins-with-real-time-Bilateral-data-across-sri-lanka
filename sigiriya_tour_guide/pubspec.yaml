@@ -38,6 +38,8 @@ dependencies:
   google_maps_flutter: ^2.14.0
   flutter_3d_controller: ^2.3.0
   http: ^1.2.0
+  flutter_map: ^6.1.0
+  latlong2: ^0.9.1
 
 dev_dependencies:
   flutter_test:
