@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 import 'package:http/http.dart' as http;
+import 'package:sigiriya_tour_guide/theme/app_theme.dart';
 
 enum TimePreset { day, evening, night }
 
@@ -31,7 +32,8 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
   bool isApiHealthy = false;
 
   // API URL: Use 10.0.2.2 for Android Emulator, localhost for web/desktop
-  static const String apiBaseUrl = 'http://10.0.2.2:8000';
+  // API URL: Use your computer's IP address (10.60.14.73) so your phone can reach the server
+  static const String apiBaseUrl = 'http://10.60.14.73:8000';
 
   @override
   void initState() {
@@ -209,7 +211,7 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showChatBottomSheet(context),
-        backgroundColor: const Color(0xff0d2039),
+        backgroundColor: AppTheme.primaryGreen,
         child: const Icon(Icons.chat, color: Colors.white),
       ),
       body: Container(
@@ -334,7 +336,7 @@ class FogOverlay extends StatelessWidget {
           sigmaY: enabled ? 6 : 0,
         ),
         child: Container(
-          color: Colors.white.withOpacity(0.10), // haze
+          color: Colors.white.withValues(alpha: 0.10), // haze
         ),
       ),
     );
@@ -427,7 +429,7 @@ class _RainPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.lightBlueAccent.withOpacity(0.55)
+      ..color = Colors.lightBlueAccent.withValues(alpha: 0.55)
       ..strokeWidth = 1.2
       ..strokeCap = StrokeCap.round;
 
@@ -501,7 +503,7 @@ class _ChatBottomSheetContentState extends State<_ChatBottomSheetContent> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: const BoxDecoration(
-                color: Color(0xff0d2039),
+                color: AppTheme.primaryGreen,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               ),
               child: Row(
@@ -597,7 +599,7 @@ class _ChatBottomSheetContentState extends State<_ChatBottomSheetContent> {
                   const SizedBox(width: 8),
                   IconButton(
                     icon: const Icon(Icons.send),
-                    color: const Color(0xff0d2039),
+                    color: AppTheme.primaryGreen,
                     onPressed: widget.onSendMessage,
                   ),
                 ],
