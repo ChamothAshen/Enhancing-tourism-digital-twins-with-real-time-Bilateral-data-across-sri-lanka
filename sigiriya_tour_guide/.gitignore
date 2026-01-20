@@ -43,19 +43,3 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-
-# Generated files
-ios/Runner/GeneratedPluginRegistrant.*
-macos/Flutter/GeneratedPluginRegistrant.swift
-linux/flutter/generated_plugin_registrant.*
-windows/flutter/generated_plugin_registrant.*
-
-# Local configuration
-local.properties
-key.properties
-
-# Large 3D models or assets (if added later)
-*.glb
-*.gltf
-*.obj
-*.fbx
