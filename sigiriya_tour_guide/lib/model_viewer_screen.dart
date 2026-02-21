@@ -5,8 +5,14 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 import 'package:http/http.dart' as http;
+import 'dart:async';
+import 'package:sigiriya_tour_guide/services/weather_service.dart';
 
 enum TimePreset { day, evening, night }
+
+enum RainIntensity { none, drizzle, heavy }
+
+enum FogIntensity { none, low, medium, high }
 
 class ModelViewerScreen extends StatefulWidget {
   const ModelViewerScreen({super.key});
@@ -20,8 +26,9 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
   final Flutter3DController controller = Flutter3DController();
   String srcGlb = 'assets/test.glb';
 
-  bool isRaining = false;
-  bool isFoggy = false;
+  RainIntensity rainIntensity = RainIntensity.none;
+  FogIntensity fogIntensity = FogIntensity.none;
+  int cloudiness = 0;
   TimePreset preset = TimePreset.day;
 
   // Chat interface
@@ -29,9 +36,16 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
   final TextEditingController _chatController = TextEditingController();
   final ValueNotifier<List<ChatMessage>> _messages = ValueNotifier([]);
   bool isApiHealthy = false;
+  double? currentTemp; // Store current temperature
 
-  // API URL: Use 10.0.2.2 for Android Emulator, localhost for web/desktop
-  static const String apiBaseUrl = 'http://10.0.2.2:8000';
+  // Antigravity & Weather
+  late AnimationController _antigravityController;
+  late Animation<double> _antigravityAnimation;
+  Timer? _weatherTimer;
+  final WeatherService _weatherService = WeatherService();
+
+  // API URL: Update this to your computer's local IP address
+  static const String apiBaseUrl = 'http://172.28.6.26:8000'; // Make sure the port is correct (e.g. 8000 or 3000)
 
   @override
   void initState() {
@@ -40,6 +54,80 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
       debugPrint('model is loaded : ${controller.onModelLoaded.value}');
     });
     _checkApiHealth();
+    _setupAntigravity();
+    _startWeatherUpdates();
+  }
+
+  void _setupAntigravity() {
+    _antigravityController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    )..repeat(reverse: true);
+
+    _antigravityAnimation = Tween<double>(begin: -10.0, end: 10.0).animate(
+      CurvedAnimation(parent: _antigravityController, curve: Curves.easeInOut),
+    );
+  }
+
+  void _startWeatherUpdates() {
+    _fetchWeather(); // Initial fetch
+    _weatherTimer = Timer.periodic(const Duration(minutes: 2), (_) {
+      _fetchWeather();
+    });
+  }
+
+  Future<void> _fetchWeather() async {
+    final weather = await _weatherService.fetchWeather();
+    if (weather == null || !mounted) return;
+
+    setState(() {
+      // 1. Weather Logic
+      final code = weather.weatherId;
+      
+      // Rain Intensity Mapping
+      if (code >= 200 && code < 300) {
+        rainIntensity = RainIntensity.heavy; // Thunderstorm
+      } else if (code >= 502 && code <= 504) {
+        rainIntensity = RainIntensity.heavy; // Heavy Rain
+      } else if ((code >= 300 && code < 400) || code == 500 || code == 501) {
+        rainIntensity = RainIntensity.drizzle; // Drizzle or Light Rain
+      } else {
+        rainIntensity = RainIntensity.none;
+      }
+
+      // Fog Intensity Mapping (Visibility)
+      final vis = weather.visibility;
+      if (vis < 500) {
+        fogIntensity = FogIntensity.high;
+      } else if (vis < 2000) {
+        fogIntensity = FogIntensity.medium;
+      } else if (vis < 5000) {
+        fogIntensity = FogIntensity.low;
+      } else {
+        fogIntensity = FogIntensity.none;
+      }
+
+      // Cloudiness
+      cloudiness = weather.cloudiness;
+
+      // Update Temperature
+      currentTemp = weather.temperature;
+
+      // 2. Time Preset Logic (Sunrise/Sunset)
+      final now = DateTime.now();
+      final eveningStart = weather.sunset.subtract(const Duration(hours: 3));
+      final eveningEnd = weather.sunset.add(const Duration(minutes: 45));
+
+      if (now.isAfter(weather.sunrise) && now.isBefore(eveningStart)) {
+         preset = TimePreset.day;
+      } else if (now.isAfter(eveningStart) && now.isBefore(eveningEnd)) {
+         preset = TimePreset.evening;
+      } else {
+         preset = TimePreset.night;
+      }
+    });
+
+    debugPrint('Weather Updated: Rain=$rainIntensity, Fog=$fogIntensity, Clouds=$cloudiness%, Preset=$preset, Temp=$currentTemp');
   }
 
   Future<void> _checkApiHealth() async {
@@ -76,6 +164,8 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
   void dispose() {
     _chatController.dispose();
     _messages.dispose();
+    _antigravityController.dispose();
+    _weatherTimer?.cancel();
     super.dispose();
   }
 
@@ -162,35 +252,39 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
   }
 
   BoxDecoration _backgroundForPreset() {
+    Color baseColor1;
+    Color baseColor2;
+    
     switch (preset) {
       case TimePreset.day:
-        return const BoxDecoration(
-          gradient: RadialGradient(
-            colors: [Color(0xffffffff), Colors.grey],
-            stops: [0.1, 1.0],
-            radius: 0.7,
-            center: Alignment.center,
-          ),
-        );
+        baseColor1 = const Color(0xffffffff);
+        baseColor2 = Colors.grey;
+        break;
       case TimePreset.evening:
-        return const BoxDecoration(
-          gradient: RadialGradient(
-            colors: [Color(0xFFFFE0B2), Color(0xFF1B1F2A)],
-            stops: [0.05, 1.0],
-            radius: 0.9,
-            center: Alignment.topCenter,
-          ),
-        );
+        baseColor1 = const Color(0xFFFFE0B2);
+        baseColor2 = const Color(0xFF1B1F2A);
+        break;
       case TimePreset.night:
-        return const BoxDecoration(
-          gradient: RadialGradient(
-            colors: [Color(0xFF1A237E), Color(0xFF05070D)],
-            stops: [0.05, 1.0],
-            radius: 1.0,
-            center: Alignment.topCenter,
-          ),
-        );
+        baseColor1 = const Color(0xFF1A237E);
+        baseColor2 = const Color(0xFF05070D);
+        break;
     }
+
+    // Adjust for cloudiness (desaturate and grey out)
+    if (cloudiness > 40) {
+      final greyFactor = (cloudiness - 40) / 60.0; // 0.0 to 1.0
+      baseColor1 = Color.lerp(baseColor1, Colors.blueGrey[300]!, greyFactor * 0.7)!;
+      baseColor2 = Color.lerp(baseColor2, Colors.blueGrey[800]!, greyFactor * 0.7)!;
+    }
+
+    return BoxDecoration(
+      gradient: RadialGradient(
+        colors: [baseColor1, baseColor2],
+        stops: const [0.05, 1.0],
+        radius: preset == TimePreset.day ? 0.7 : 1.0,
+        center: preset == TimePreset.day ? Alignment.center : Alignment.topCenter,
+      ),
+    );
   }
 
   double _nightTintOpacity() {
@@ -216,100 +310,135 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
         decoration: _backgroundForPreset(),
         width: double.infinity,
         height: double.infinity,
-        child: Column(
+        child: Stack(
           children: [
-            Expanded(
-              child: Stack(
-                children: [
-                  Flutter3DViewer(
-                    activeGestureInterceptor: true,
-                    progressBarColor: Colors.orange,
-                    enableTouch: true,
-                    onProgress: (p) =>
-                        debugPrint('model loading progress : $p'),
-                    onLoad: (modelAddress) {
-                      debugPrint('model loaded : $modelAddress');
-                      controller.setCameraOrbit(-85, 50, 5);
-                      controller.playAnimation();
-                    },
-                    onError: (e) => debugPrint('model failed to load : $e'),
-                    controller: controller,
-                    src: srcGlb,
-                  ),
-
-                  // Night/Evening tint overlay
-                  IgnorePointer(
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 300),
-                      opacity: _nightTintOpacity(),
-                      child: Container(color: Colors.black),
+            // 3D Model with Antigravity
+            Positioned.fill(
+              child: AnimatedBuilder(
+                animation: _antigravityAnimation,
+                builder: (context, child) {
+                  return Transform.translate(
+                    offset: Offset(0, _antigravityAnimation.value),
+                    child: Flutter3DViewer(
+                      activeGestureInterceptor: true,
+                      progressBarColor: Colors.orange,
+                      enableTouch: true,
+                      onProgress: (p) =>
+                          debugPrint('model loading progress : $p'),
+                      onLoad: (modelAddress) {
+                        debugPrint('model loaded : $modelAddress');
+                        controller.setCameraOrbit(-85, 50, 5);
+                        controller.playAnimation();
+                      },
+                      onError: (e) =>
+                          debugPrint('model failed to load : $e'),
+                      controller: controller,
+                      src: srcGlb,
                     ),
-                  ),
-
-                  // Fog overlay (blur + haze)
-                  IgnorePointer(child: FogOverlay(enabled: isFoggy)),
-
-                  // Rain overlay (particles)
-                  IgnorePointer(child: RainOverlay(enabled: isRaining)),
-                ],
+                  );
+                },
               ),
             ),
 
-            // Controls panel
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Scene Controls',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 14),
+            // Night/Evening tint overlay
+            IgnorePointer(
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 300),
+                opacity: _nightTintOpacity(),
+                child: Container(color: Colors.black),
+              ),
+            ),
 
-                  ElevatedButton.icon(
-                    onPressed: () => setState(() => isRaining = !isRaining),
-                    icon: const Icon(Icons.water_drop),
-                    label: Text(isRaining ? 'Disable Rain' : 'Enable Rain'),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(220, 50),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
+            // Fog overlay (blur + haze)
+            IgnorePointer(child: FogOverlay(intensity: fogIntensity)),
+            
+            // Cloudiness desaturation overlay
+            if (cloudiness > 50)
+              IgnorePointer(
+                child: Opacity(
+                  opacity: (cloudiness - 50) / 100.0 * 0.3,
+                  child: Container(color: Colors.blueGrey.withOpacity(0.2)),
+                ),
+              ),
 
-                  ElevatedButton.icon(
-                    onPressed: () => setState(() => isFoggy = !isFoggy),
-                    icon: const Icon(Icons.cloud),
-                    label: Text(isFoggy ? 'Disable Fog' : 'Enable Fog'),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(220, 50),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
+            // Rain overlay (particles)
+            IgnorePointer(child: RainOverlay(intensity: rainIntensity)),
 
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        preset = switch (preset) {
-                          TimePreset.day => TimePreset.evening,
-                          TimePreset.evening => TimePreset.night,
-                          TimePreset.night => TimePreset.day,
-                        };
-                      });
-                      debugPrint('Preset: $preset');
-                    },
-                    icon: const Icon(Icons.nightlight_round),
-                    label: Text(switch (preset) {
-                      TimePreset.day => 'Switch to Evening',
-                      TimePreset.evening => 'Switch to Night',
-                      TimePreset.night => 'Switch to Day',
-                    }),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(220, 50),
+            // Weather & Temperature Display (Top Left)
+            Positioned(
+              top: 60,
+              left: 20,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withOpacity(0.2)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Temperature
+                    Row(
+                      children: [
+                        const Icon(Icons.thermostat, color: Colors.orangeAccent, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          currentTemp != null
+                              ? '${currentTemp!.toStringAsFixed(1)}°C'
+                              : '--°C',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    // Weather Status
+                    Row(
+                      children: [
+                         if (rainIntensity != RainIntensity.none) ...[
+                           Icon(
+                             Icons.water_drop, 
+                             color: rainIntensity == RainIntensity.heavy ? Colors.blue[900] : Colors.blueAccent, 
+                             size: 16
+                           ),
+                           const SizedBox(width: 4),
+                           Text(
+                             rainIntensity == RainIntensity.heavy ? 'Heavy Rain' : 'Drizzle', 
+                             style: const TextStyle(color: Colors.white70)
+                           ),
+                           const SizedBox(width: 12),
+                         ],
+                         if (fogIntensity != FogIntensity.none) ...[
+                           const Icon(Icons.cloud, color: Colors.grey, size: 16),
+                           const SizedBox(width: 4),
+                           Text(
+                             '${fogIntensity.name.toUpperCase()} Fog', 
+                             style: const TextStyle(color: Colors.white70)
+                           ),
+                           const SizedBox(width: 12),
+                         ],
+                         if (cloudiness > 10) ...[
+                           const Icon(Icons.wb_cloudy, color: Colors.white70, size: 16),
+                           const SizedBox(width: 4),
+                           Text('$cloudiness% Cloudy', style: const TextStyle(color: Colors.white70)),
+                         ] else if (rainIntensity == RainIntensity.none && fogIntensity == FogIntensity.none) ...[
+                           const Text('Clear', style: TextStyle(color: Colors.white70)),
+                         ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -320,21 +449,41 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
 }
 
 class FogOverlay extends StatelessWidget {
-  final bool enabled;
-  const FogOverlay({super.key, required this.enabled});
+  final FogIntensity intensity;
+  const FogOverlay({super.key, required this.intensity});
+
+  double _getSigma() {
+    switch (intensity) {
+      case FogIntensity.none: return 0;
+      case FogIntensity.low: return 2;
+      case FogIntensity.medium: return 6;
+      case FogIntensity.high: return 12;
+    }
+  }
+
+  double _getOpacity() {
+    switch (intensity) {
+      case FogIntensity.none: return 0;
+      case FogIntensity.low: return 0.05;
+      case FogIntensity.medium: return 0.15;
+      case FogIntensity.high: return 0.35;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (intensity == FogIntensity.none) return const SizedBox.shrink();
+    
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 350),
-      opacity: enabled ? 1.0 : 0.0,
+      opacity: 1.0,
       child: BackdropFilter(
         filter: ImageFilter.blur(
-          sigmaX: enabled ? 6 : 0,
-          sigmaY: enabled ? 6 : 0,
+          sigmaX: _getSigma(),
+          sigmaY: _getSigma(),
         ),
         child: Container(
-          color: Colors.white.withOpacity(0.10), // haze
+          color: Colors.white.withOpacity(_getOpacity()), // haze
         ),
       ),
     );
@@ -342,8 +491,8 @@ class FogOverlay extends StatelessWidget {
 }
 
 class RainOverlay extends StatefulWidget {
-  final bool enabled;
-  const RainOverlay({super.key, required this.enabled});
+  final RainIntensity intensity;
+  const RainOverlay({super.key, required this.intensity});
 
   @override
   State<RainOverlay> createState() => _RainOverlayState();
@@ -364,7 +513,7 @@ class _RainOverlayState extends State<RainOverlay>
             duration: const Duration(milliseconds: 16),
           )
           ..addListener(() {
-            if (!widget.enabled) return;
+            if (widget.intensity == RainIntensity.none) return;
             setState(() {
               for (final d in _drops) {
                 d.y += d.speed;
@@ -377,12 +526,30 @@ class _RainOverlayState extends State<RainOverlay>
           })
           ..repeat();
 
-    _drops = List.generate(220, (_) {
+    _createDrops();
+  }
+
+  void _createDrops() {
+    int count = 0;
+    double speedMin = 0.02;
+    double speedAdd = 0.03;
+
+    if (widget.intensity == RainIntensity.drizzle) {
+      count = 100;
+      speedMin = 0.015;
+      speedAdd = 0.01;
+    } else if (widget.intensity == RainIntensity.heavy) {
+      count = 450;
+      speedMin = 0.035;
+      speedAdd = 0.04;
+    }
+
+    _drops = List.generate(count, (_) {
       return _Drop(
         x: _rng.nextDouble(),
         y: _rng.nextDouble(),
         len: _rng.nextDouble() * 0.04 + 0.02,
-        speed: _rng.nextDouble() * 0.03 + 0.02,
+        speed: _rng.nextDouble() * speedAdd + speedMin,
       );
     });
   }
@@ -390,7 +557,9 @@ class _RainOverlayState extends State<RainOverlay>
   @override
   void didUpdateWidget(covariant RainOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // keep controller running; we just stop drawing when disabled
+    if (oldWidget.intensity != widget.intensity) {
+      _createDrops();
+    }
   }
 
   @override
@@ -401,8 +570,8 @@ class _RainOverlayState extends State<RainOverlay>
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.enabled) return const SizedBox.shrink();
-    return CustomPaint(painter: _RainPainter(_drops), size: Size.infinite);
+    if (widget.intensity == RainIntensity.none) return const SizedBox.shrink();
+    return CustomPaint(painter: _RainPainter(_drops, widget.intensity), size: Size.infinite);
   }
 }
 
@@ -422,13 +591,16 @@ class _Drop {
 
 class _RainPainter extends CustomPainter {
   final List<_Drop> drops;
-  _RainPainter(this.drops);
+  final RainIntensity intensity;
+  _RainPainter(this.drops, this.intensity);
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.lightBlueAccent.withOpacity(0.55)
-      ..strokeWidth = 1.2
+      ..color = intensity == RainIntensity.heavy 
+          ? Colors.blueGrey.withOpacity(0.7) 
+          : Colors.lightBlueAccent.withOpacity(0.55)
+      ..strokeWidth = intensity == RainIntensity.heavy ? 1.8 : 1.0
       ..strokeCap = StrokeCap.round;
 
     for (final d in drops) {
