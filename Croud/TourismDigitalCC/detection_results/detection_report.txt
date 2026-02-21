@@ -9,8 +9,8 @@ Total Images Processed: 3
 RESULTS:
 ------------------------------------------------------------
 crowd1.jpg           :   7 people
-crowd2.jpg           :   0 people
-people.jpg           :   2 people
+crowd2.jpg           :   1 people
+people.jpg           :   1 people
 ------------------------------------------------------------
 Total people detected: 9
 Average per image: 3.0

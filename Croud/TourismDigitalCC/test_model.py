@@ -14,9 +14,10 @@ from PIL import Image
 import numpy as np
 
 # Configuration
-MODEL_PATH = "best.pt"  # Path to your trained model
+MODEL_PATH = r"D:\USER DATA\Documents\Enhancing-tourism-digital-twins-with-real-time-Bilateral-data-across-sri-lanka\Croud\TourismDigitalCC\best-2.pt"  # <-- change this
 CONFIDENCE_THRESHOLD = 0.25  # Confidence threshold for detections
-IOU_THRESHOLD = 0.45  # IoU threshold for NMS
+IOU_THRESHOLD = 0.45  # IoU threshold for NMS1
+
 IMAGE_SIZE = 640  # Image size for inference
 
 class CrowdDetectionTester:
