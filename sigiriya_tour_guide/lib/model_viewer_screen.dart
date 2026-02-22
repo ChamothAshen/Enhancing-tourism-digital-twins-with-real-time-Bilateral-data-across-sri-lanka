@@ -140,11 +140,13 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
           .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
+        if (!mounted) return;
         setState(() {
           isApiHealthy = true;
         });
         debugPrint('API Health Check: Healthy');
       } else {
+        if (!mounted) return;
         setState(() {
           isApiHealthy = false;
         });
@@ -153,6 +155,7 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
         );
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         isApiHealthy = false;
       });
@@ -173,6 +176,7 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
     if (_chatController.text.trim().isEmpty) return;
 
     final userMessage = _chatController.text;
+    if (!mounted) return;
     _messages.value = [
       ..._messages.value,
       ChatMessage(text: userMessage, isUser: true, timestamp: DateTime.now()),
@@ -312,7 +316,7 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
         height: double.infinity,
         child: Stack(
           children: [
-            // 3D Model with Antigravity
+            // 3D Model with Antigravity (Bottom of stack, but gestures pass through effects)
             Positioned.fill(
               child: AnimatedBuilder(
                 animation: _antigravityAnimation,
@@ -340,8 +344,9 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
               ),
             ),
 
-            // Night/Evening tint overlay
+            // Night/Evening tint overlay (Must be IgnorePointer)
             IgnorePointer(
+              ignoring: true,
               child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 300),
                 opacity: _nightTintOpacity(),
@@ -350,11 +355,12 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
             ),
 
             // Fog overlay (blur + haze)
-            IgnorePointer(child: FogOverlay(intensity: fogIntensity)),
+            IgnorePointer(ignoring: true, child: FogOverlay(intensity: fogIntensity)),
             
             // Cloudiness desaturation overlay
             if (cloudiness > 50)
               IgnorePointer(
+                ignoring: true,
                 child: Opacity(
                   opacity: (cloudiness - 50) / 100.0 * 0.3,
                   child: Container(color: Colors.blueGrey.withOpacity(0.2)),
@@ -362,7 +368,7 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
               ),
 
             // Rain overlay (particles)
-            IgnorePointer(child: RainOverlay(intensity: rainIntensity)),
+            IgnorePointer(ignoring: true, child: RainOverlay(intensity: rainIntensity)),
 
             // Weather & Temperature Display (Top Left)
             Positioned(
@@ -472,7 +478,7 @@ class FogOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (intensity == FogIntensity.none) return const SizedBox.shrink();
+    if (intensity == FogIntensity.none || !context.mounted) return const SizedBox.shrink();
     
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 350),
@@ -507,26 +513,11 @@ class _RainOverlayState extends State<RainOverlay>
   @override
   void initState() {
     super.initState();
-    _ctrl =
-        AnimationController(
-            vsync: this,
-            duration: const Duration(milliseconds: 16),
-          )
-          ..addListener(() {
-            if (widget.intensity == RainIntensity.none) return;
-            setState(() {
-              for (final d in _drops) {
-                d.y += d.speed;
-                if (d.y > 1.2) {
-                  d.y = -0.2;
-                  d.x = _rng.nextDouble();
-                }
-              }
-            });
-          })
-          ..repeat();
-
     _createDrops();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1), // Tick duration
+    )..repeat();
   }
 
   void _createDrops() {
@@ -571,7 +562,10 @@ class _RainOverlayState extends State<RainOverlay>
   @override
   Widget build(BuildContext context) {
     if (widget.intensity == RainIntensity.none) return const SizedBox.shrink();
-    return CustomPaint(painter: _RainPainter(_drops, widget.intensity), size: Size.infinite);
+    return CustomPaint(
+      painter: _RainPainter(_drops, widget.intensity, _ctrl, _rng),
+      size: Size.infinite,
+    );
   }
 }
 
@@ -592,18 +586,28 @@ class _Drop {
 class _RainPainter extends CustomPainter {
   final List<_Drop> drops;
   final RainIntensity intensity;
-  _RainPainter(this.drops, this.intensity);
+  final Random rng;
+
+  _RainPainter(this.drops, this.intensity, Listenable repaint, this.rng)
+      : super(repaint: repaint);
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = intensity == RainIntensity.heavy 
-          ? Colors.blueGrey.withOpacity(0.7) 
+      ..color = intensity == RainIntensity.heavy
+          ? Colors.blueGrey.withOpacity(0.7)
           : Colors.lightBlueAccent.withOpacity(0.55)
       ..strokeWidth = intensity == RainIntensity.heavy ? 1.8 : 1.0
       ..strokeCap = StrokeCap.round;
 
     for (final d in drops) {
+      // Update drop position directly in painter for efficiency
+      d.y += d.speed;
+      if (d.y > 1.2) {
+        d.y = -0.2;
+        d.x = rng.nextDouble();
+      }
+
       final x = d.x * size.width;
       final y1 = d.y * size.height;
       final y2 = y1 + d.len * size.height;
@@ -612,7 +616,8 @@ class _RainPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _RainPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _RainPainter oldDelegate) =>
+      oldDelegate.intensity != intensity;
 }
 
 class ChatMessage {

@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 
 class WeatherService {
   // Replace with your actual OpenWeatherMap API Key
-  static const String _apiKey = '50cd382fe18a19ba417eb3e7d9f16fe0';
+  static const String _apiKey = 'e81c34fa0243116c02c261187618fa48';
   static const double _lat = 7.957;
   static const double _lon = 80.760;
   static const String _baseUrl = 'https://api.openweathermap.org/data/2.5/weather';
@@ -47,13 +47,17 @@ class WeatherData {
   });
 
   factory WeatherData.fromJson(Map<String, dynamic> json) {
+    // Safely extract weather list
+    final weatherList = json['weather'] as List?;
+    final firstWeather = (weatherList != null && weatherList.isNotEmpty) ? weatherList[0] : null;
+
     return WeatherData(
-      weatherId: (json['weather'] as List).first['id'],
-      visibility: (json['visibility'] as num).toDouble(),
-      sunrise: DateTime.fromMillisecondsSinceEpoch(json['sys']['sunrise'] * 1000),
-      sunset: DateTime.fromMillisecondsSinceEpoch(json['sys']['sunset'] * 1000),
-      temperature: (json['main']['temp'] as num).toDouble(),
-      cloudiness: (json['clouds']['all'] as num).toInt(),
+      weatherId: (firstWeather?['id'] as num?)?.toInt() ?? 800,
+      visibility: (json['visibility'] as num?)?.toDouble() ?? 10000.0,
+      sunrise: DateTime.fromMillisecondsSinceEpoch((json['sys']?['sunrise'] ?? 0) * 1000),
+      sunset: DateTime.fromMillisecondsSinceEpoch((json['sys']?['sunset'] ?? 0) * 1000),
+      temperature: (json['main']?['temp'] as num?)?.toDouble() ?? 0.0,
+      cloudiness: (json['clouds']?['all'] as num?)?.toInt() ?? 0,
     );
   }
 }
