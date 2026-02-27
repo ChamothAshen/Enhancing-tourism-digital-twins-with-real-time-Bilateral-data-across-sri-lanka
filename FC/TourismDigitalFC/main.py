@@ -22,6 +22,11 @@ from prophet import Prophet
 import os
 import re
 
+# MongoDB and Authentication imports
+from database import connect_to_mongo, close_mongo_connection, get_database
+from models import AdminRegister, AdminLogin, AdminResponse, AdminInDB
+from auth import get_password_hash, verify_password, create_access_token
+
 # ============================================================================
 # INITIALIZATION
 # ============================================================================
@@ -36,6 +41,10 @@ full_forecast = None
 async def lifespan(app: FastAPI):
     """Load data and generate forecast on startup."""
     global df, fc_df, prophet_model, full_forecast
+    
+    # Connect to MongoDB
+    await connect_to_mongo()
+    print("✓ MongoDB connected")
     
     try:
         # Load data
@@ -64,7 +73,10 @@ async def lifespan(app: FastAPI):
         raise
     
     yield
-    # Cleanup on shutdown (if needed)
+    
+    # Cleanup on shutdown
+    await close_mongo_connection()
+    print("✓ MongoDB connection closed")
 
 app = FastAPI(
     title="Sigiriya Visitor Forecast API",
@@ -576,6 +588,141 @@ async def chat(request: ChatRequest):
         user_message=request.message,
         assistant_response=response
     )
+
+
+# ============================================================================
+# AUTHENTICATION ENDPOINTS
+# ============================================================================
+
+@app.post("/admin/register", response_model=AdminResponse, tags=["Authentication"])
+async def register_admin(admin: AdminRegister):
+    """
+    Register a new admin user.
+    
+    Creates a new admin account with hashed password and returns a JWT token.
+    """
+    db = get_database()
+    
+    # Check if email already exists
+    existing_admin = await db.admins.find_one({"email": admin.email})
+    if existing_admin:
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered"
+        )
+    
+    # Create admin document
+    admin_doc = AdminInDB(
+        name=admin.name,
+        email=admin.email,
+        hashed_password=get_password_hash(admin.password),
+        phone=admin.phone,
+    )
+    
+    # Insert into database
+    result = await db.admins.insert_one(admin_doc.dict())
+    
+    # Create JWT token
+    token_data = {"sub": admin.email, "name": admin.name}
+    token = create_access_token(token_data)
+    
+    # Return response
+    return AdminResponse(
+        id=str(result.inserted_id),
+        name=admin.name,
+        email=admin.email,
+        phone=admin.phone,
+        created_at=admin_doc.created_at,
+        token=token
+    )
+
+
+@app.post("/admin/login", response_model=AdminResponse, tags=["Authentication"])
+async def login_admin(credentials: AdminLogin):
+    """
+    Login an admin user.
+    
+    Validates credentials and returns a JWT token if successful.
+    """
+    db = get_database()
+    
+    # Find admin by email
+    admin = await db.admins.find_one({"email": credentials.email})
+    
+    if not admin:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password"
+        )
+    
+    # Verify password
+    if not verify_password(credentials.password, admin["hashed_password"]):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password"
+        )
+    
+    # Check if account is active
+    if not admin.get("is_active", True):
+        raise HTTPException(
+            status_code=403,
+            detail="Account is deactivated"
+        )
+    
+    # Create JWT token
+    token_data = {"sub": admin["email"], "name": admin["name"]}
+    token = create_access_token(token_data)
+    
+    # Return response
+    return AdminResponse(
+        id=str(admin["_id"]),
+        name=admin["name"],
+        email=admin["email"],
+        phone=admin.get("phone"),
+        created_at=admin["created_at"],
+        token=token
+    )
+
+
+@app.get("/admin/me", tags=["Authentication"])
+async def get_current_admin(token: str = Query(..., description="JWT token")):
+    """
+    Get current admin information from token.
+    
+    Validates the JWT token and returns admin details.
+    """
+    from auth import decode_access_token
+    
+    payload = decode_access_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or expired token"
+        )
+    
+    email = payload.get("sub")
+    if not email:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid token payload"
+        )
+    
+    db = get_database()
+    admin = await db.admins.find_one({"email": email})
+    
+    if not admin:
+        raise HTTPException(
+            status_code=404,
+            detail="Admin not found"
+        )
+    
+    return {
+        "id": str(admin["_id"]),
+        "name": admin["name"],
+        "email": admin["email"],
+        "phone": admin.get("phone"),
+        "created_at": admin["created_at"]
+    }
 
 
 # ============================================================================
