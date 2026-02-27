@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:sigiriya_tour_guide/theme/app_theme.dart';
+import 'package:sigiriya_tour_guide/widgets/chat_bottom_sheet.dart';
 import 'dart:math' as math;
 import 'package:flutter_tts/flutter_tts.dart';
 
@@ -30,8 +31,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   bool _isMLProcessing = false;
   final FlutterTts _flutterTts = FlutterTts();
   // Use your computer's IP address (10.60.14.73) so your phone can reach the server
-  final String _apiUrl = "http://10.60.14.73:8000/predict"; 
-
+  final String _apiUrl = "http://10.60.14.73:8000/predict";
 
   // Sigiriya Rock coordinates
   static const LatLng sigiriyaRock = LatLng(7.9570, 80.7603);
@@ -312,7 +312,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           "lat": pos.latitude,
           "lon": pos.longitude,
         }),
-      ).timeout(const Duration(seconds: 3));
+      ).timeout(const Duration(seconds: 20));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -333,10 +333,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       }
     } catch (e) {
       // API might be offline
-      setState(() => _isMLProcessing = false);
+      setState(() {
+        _isMLProcessing = false;
+        _errorMessage = "ML API Connection Error: $e";
+      });
       print("ML API Error: $e");
     }
   }
+
 
   void _checkArrival(LatLng userPos) {
     // Check if within 20 meters of ANY attraction (as per test requirements)
@@ -438,6 +442,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 _selectedLocation = name;
               });
               _mapController.move(data['position'] as LatLng, 17.0);
+              // Open chatbot bottom sheet with selected location
+              ChatBottomSheet.show(
+                context,
+                name,
+                latitude: (data['position'] as LatLng).latitude,
+                longitude: (data['position'] as LatLng).longitude,
+              );
             },
             child: AnimatedBuilder(
               animation: _pulseController,
@@ -1235,36 +1246,42 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                   Positioned(
                     bottom: 20,
                     right: 20,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppTheme.primaryGreen, Color(0xFF1B5E20)],
-                        ),
-                        borderRadius: BorderRadius.circular(25),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.primaryGreen.withOpacity(0.4),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.location_on, color: Colors.white, size: 20),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${_attractions.length} Places',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [AppTheme.primaryGreen, Color(0xFF1B5E20)],
                             ),
+                            borderRadius: BorderRadius.circular(25),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.primaryGreen.withOpacity(0.4),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.location_on, color: Colors.white, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${_attractions.length} Places',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
               ],

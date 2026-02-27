@@ -1,6 +1,8 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:sigiriya_tour_guide/screens/map_screen.dart';
 import 'package:sigiriya_tour_guide/theme/app_theme.dart';
+import 'package:sigiriya_tour_guide/providers/chat_provider.dart';
 import 'model_viewer_screen.dart';
 
 void main() => runApp(const MyApp());
@@ -10,11 +12,16 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Sigiriya Tour Guide',
-      theme: AppTheme.lightTheme,
-      home: const MainNavigationScreen(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
+      ],
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Sigiriya Tour Guide',
+        theme: AppTheme.lightTheme,
+        home: const MainNavigationScreen(),
+      ),
     );
   }
 }

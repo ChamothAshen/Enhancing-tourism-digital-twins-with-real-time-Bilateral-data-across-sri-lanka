@@ -33,7 +33,7 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
 
   // API URL: Use 10.0.2.2 for Android Emulator, localhost for web/desktop
   // API URL: Use your computer's IP address (10.60.14.73) so your phone can reach the server
-  static const String apiBaseUrl = 'http://10.60.14.73:8000';
+  static const String apiBaseUrl = 'http://172.28.26.66:8000';
 
   @override
   void initState() {
