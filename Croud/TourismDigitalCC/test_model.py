@@ -14,7 +14,7 @@ from PIL import Image
 import numpy as np
 
 # Configuration
-MODEL_PATH = r"D:\USER DATA\Documents\Enhancing-tourism-digital-twins-with-real-time-Bilateral-data-across-sri-lanka\Croud\TourismDigitalCC\best-2.pt"  # <-- change this
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "best-2.pt")  # Uses relative path
 CONFIDENCE_THRESHOLD = 0.25  # Confidence threshold for detections
 IOU_THRESHOLD = 0.45  # IoU threshold for NMS1
 
