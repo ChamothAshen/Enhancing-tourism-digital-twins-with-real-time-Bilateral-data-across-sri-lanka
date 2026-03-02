@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 import 'dart:async';
 import 'package:sigiriya_tour_guide/services/weather_service.dart';
+import 'package:sigiriya_tour_guide/services/risk_prediction_service.dart';
 
 enum TimePreset { day, evening, night }
 
@@ -31,11 +32,17 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
 
   double? currentTemp; // Store current temperature
 
+  // Risk prediction state (driven by Railway backend API)
+  bool _fogRisk = false;
+  bool _slipRisk = false;
+  bool _heatStress = false;
+
   // Antigravity & Weather
   late AnimationController _antigravityController;
   late Animation<double> _antigravityAnimation;
   Timer? _weatherTimer;
   final WeatherService _weatherService = WeatherService();
+  final RiskPredictionService _riskService = RiskPredictionService();
 
   @override
   void initState() {
@@ -72,7 +79,7 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
     setState(() {
       // 1. Weather Logic
       final code = weather.weatherId;
-      
+
       // Rain Intensity Mapping
       if (code >= 200 && code < 300) {
         rainIntensity = RainIntensity.heavy; // Thunderstorm
@@ -108,15 +115,35 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
       final eveningEnd = weather.sunset.add(const Duration(minutes: 45));
 
       if (now.isAfter(weather.sunrise) && now.isBefore(eveningStart)) {
-         preset = TimePreset.day;
+        preset = TimePreset.day;
       } else if (now.isAfter(eveningStart) && now.isBefore(eveningEnd)) {
-         preset = TimePreset.evening;
+        preset = TimePreset.evening;
       } else {
-         preset = TimePreset.night;
+        preset = TimePreset.night;
       }
     });
 
-    debugPrint('Weather Updated: Rain=$rainIntensity, Fog=$fogIntensity, Clouds=$cloudiness%, Preset=$preset, Temp=$currentTemp');
+    debugPrint(
+      'Weather Updated: Rain=$rainIntensity, Fog=$fogIntensity, Clouds=$cloudiness%, Preset=$preset, Temp=$currentTemp',
+    );
+
+    // 3. Fetch risk predictions from the hosted ML model using real weather data
+    _fetchRiskPrediction(weather);
+  }
+
+  Future<void> _fetchRiskPrediction(WeatherData weather) async {
+    final prediction = await _riskService.predict(weather);
+    if (prediction == null || !mounted) return;
+
+    setState(() {
+      _fogRisk = prediction.fogRisk;
+      _slipRisk = prediction.slipRisk;
+      _heatStress = prediction.heatStress;
+    });
+
+    debugPrint(
+      'Risk Alerts Updated: Fog=$_fogRisk, Slip=$_slipRisk, Heat=$_heatStress',
+    );
   }
 
   @override
@@ -126,39 +153,100 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
     super.dispose();
   }
 
-
   BoxDecoration _backgroundForPreset() {
-    Color baseColor1;
-    Color baseColor2;
-    
+    // Realistic sky colors — linear gradient from top to bottom like a real sky
+    List<Color> skyColors;
+    List<double> stops;
+
     switch (preset) {
       case TimePreset.day:
-        baseColor1 = const Color(0xffffffff);
-        baseColor2 = Colors.grey;
+        // Bright tropical sky: deep sky blue at top → lighter blue → warm horizon glow
+        skyColors = [
+          const Color(0xFF1E88E5), // Deep sky blue (zenith)
+          const Color(0xFF42A5F5), // Medium sky blue
+          const Color(0xFF90CAF9), // Light sky blue
+          const Color(0xFFE1F0FA), // Pale horizon blue
+          const Color(0xFFFFF8E1), // Warm sunlit horizon
+        ];
+        stops = [0.0, 0.25, 0.5, 0.75, 1.0];
         break;
       case TimePreset.evening:
-        baseColor1 = const Color(0xFFFFE0B2);
-        baseColor2 = const Color(0xFF1B1F2A);
+        // Golden hour sunset: deep blue → purple → warm orange → golden horizon
+        skyColors = [
+          const Color(0xFF1A237E), // Deep indigo (upper sky)
+          const Color(0xFF5C3D8F), // Purple twilight
+          const Color(0xFFE65100), // Deep orange
+          const Color(0xFFFF8F00), // Amber glow
+          const Color(0xFFFFCC02), // Golden horizon
+        ];
+        stops = [0.0, 0.3, 0.6, 0.8, 1.0];
         break;
       case TimePreset.night:
-        baseColor1 = const Color(0xFF1A237E);
-        baseColor2 = const Color(0xFF05070D);
+        // Night sky: very dark blue top → dark indigo → deep navy horizon
+        skyColors = [
+          const Color(0xFF050A14), // Near-black sky
+          const Color(0xFF0D1B2A), // Very dark blue
+          const Color(0xFF1B2838), // Dark navy
+          const Color(0xFF1E3A5F), // Deep horizon blue
+        ];
+        stops = [0.0, 0.35, 0.7, 1.0];
         break;
     }
 
-    // Adjust for cloudiness (desaturate and grey out)
-    if (cloudiness > 40) {
-      final greyFactor = (cloudiness - 40) / 60.0; // 0.0 to 1.0
-      baseColor1 = Color.lerp(baseColor1, Colors.blueGrey[300]!, greyFactor * 0.7)!;
-      baseColor2 = Color.lerp(baseColor2, Colors.blueGrey[800]!, greyFactor * 0.7)!;
+    // Adjust for cloudiness — subtle shift, NOT a harsh grey takeover
+    // Only noticeably affects sky above 60% cloudiness
+    if (cloudiness > 30 && preset == TimePreset.day) {
+      final factor = ((cloudiness - 30) / 70.0).clamp(0.0, 1.0); // 0.0 to 1.0
+      // Overcast sky: desaturate blues toward soft grey-blue, keep it bright
+      final overcastTop = const Color(0xFF78909C); // Blue-grey (not dark!)
+      final overcastMid = const Color(0xFF90A4AE); // Lighter blue-grey
+      final overcastLow = const Color(0xFFB0BEC5); // Pale grey-blue
+      final overcastHorizon = const Color(0xFFCFD8DC); // Very light grey
+
+      skyColors = [
+        Color.lerp(skyColors[0], overcastTop, factor * 0.6)!,
+        Color.lerp(skyColors[1], overcastMid, factor * 0.5)!,
+        Color.lerp(skyColors[2], overcastLow, factor * 0.45)!,
+        Color.lerp(skyColors[3], overcastHorizon, factor * 0.4)!,
+        Color.lerp(skyColors[4], const Color(0xFFE0E0E0), factor * 0.35)!,
+      ];
+    } else if (cloudiness > 50 && preset == TimePreset.evening) {
+      final factor = ((cloudiness - 50) / 50.0).clamp(0.0, 1.0);
+      // Muted sunset — less vibrant, more grey-purple
+      skyColors = [
+        Color.lerp(skyColors[0], const Color(0xFF263238), factor * 0.4)!,
+        Color.lerp(skyColors[1], const Color(0xFF455A64), factor * 0.35)!,
+        Color.lerp(skyColors[2], const Color(0xFF795548), factor * 0.3)!,
+        Color.lerp(skyColors[3], const Color(0xFFBCAAA4), factor * 0.25)!,
+        Color.lerp(skyColors[4], const Color(0xFFD7CCC8), factor * 0.2)!,
+      ];
+    }
+
+    // If it's raining, darken the sky slightly for realism
+    if (rainIntensity == RainIntensity.heavy) {
+      skyColors = skyColors.map((c) {
+        final hsl = HSLColor.fromColor(c);
+        return hsl
+            .withLightness((hsl.lightness * 0.7).clamp(0.0, 1.0))
+            .withSaturation((hsl.saturation * 0.6).clamp(0.0, 1.0))
+            .toColor();
+      }).toList();
+    } else if (rainIntensity == RainIntensity.drizzle) {
+      skyColors = skyColors.map((c) {
+        final hsl = HSLColor.fromColor(c);
+        return hsl
+            .withLightness((hsl.lightness * 0.85).clamp(0.0, 1.0))
+            .withSaturation((hsl.saturation * 0.8).clamp(0.0, 1.0))
+            .toColor();
+      }).toList();
     }
 
     return BoxDecoration(
-      gradient: RadialGradient(
-        colors: [baseColor1, baseColor2],
-        stops: const [0.05, 1.0],
-        radius: preset == TimePreset.day ? 0.7 : 1.0,
-        center: preset == TimePreset.day ? Alignment.center : Alignment.topCenter,
+      gradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: skyColors,
+        stops: stops,
       ),
     );
   }
@@ -201,8 +289,7 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
                         controller.setCameraOrbit(-85, 50, 5);
                         controller.playAnimation();
                       },
-                      onError: (e) =>
-                          debugPrint('model failed to load : $e'),
+                      onError: (e) => debugPrint('model failed to load : $e'),
                       controller: controller,
                       src: srcGlb,
                     ),
@@ -222,27 +309,47 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
             ),
 
             // Fog overlay (blur + haze)
-            IgnorePointer(ignoring: true, child: FogOverlay(intensity: fogIntensity)),
-            
-            // Cloudiness desaturation overlay
-            if (cloudiness > 50)
+            IgnorePointer(
+              ignoring: true,
+              child: FogOverlay(intensity: fogIntensity),
+            ),
+
+            // Cloudiness haze overlay — very subtle, only for very overcast skies
+            if (cloudiness > 70)
               IgnorePointer(
                 ignoring: true,
                 child: Opacity(
-                  opacity: (cloudiness - 50) / 100.0 * 0.3,
-                  child: Container(color: Colors.blueGrey.withOpacity(0.2)),
+                  opacity: ((cloudiness - 70) / 30.0 * 0.12).clamp(0.0, 0.12),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.blueGrey.withOpacity(0.15),
+                          Colors.blueGrey.withOpacity(0.05),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ),
 
             // Rain overlay (particles)
-            IgnorePointer(ignoring: true, child: RainOverlay(intensity: rainIntensity)),
+            IgnorePointer(
+              ignoring: true,
+              child: RainOverlay(intensity: rainIntensity),
+            ),
 
             // Weather & Temperature Display (Top Left)
             Positioned(
               top: 60,
               left: 20,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.4),
                   borderRadius: BorderRadius.circular(16),
@@ -261,7 +368,11 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
                     // Temperature
                     Row(
                       children: [
-                        const Icon(Icons.thermostat, color: Colors.orangeAccent, size: 20),
+                        const Icon(
+                          Icons.thermostat,
+                          color: Colors.orangeAccent,
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           currentTemp != null
@@ -279,39 +390,144 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
                     // Weather Status
                     Row(
                       children: [
-                         if (rainIntensity != RainIntensity.none) ...[
-                           Icon(
-                             Icons.water_drop, 
-                             color: rainIntensity == RainIntensity.heavy ? Colors.blue[900] : Colors.blueAccent, 
-                             size: 16
-                           ),
-                           const SizedBox(width: 4),
-                           Text(
-                             rainIntensity == RainIntensity.heavy ? 'Heavy Rain' : 'Drizzle', 
-                             style: const TextStyle(color: Colors.white70)
-                           ),
-                           const SizedBox(width: 12),
-                         ],
-                         if (fogIntensity != FogIntensity.none) ...[
-                           const Icon(Icons.cloud, color: Colors.grey, size: 16),
-                           const SizedBox(width: 4),
-                           Text(
-                             '${fogIntensity.name.toUpperCase()} Fog', 
-                             style: const TextStyle(color: Colors.white70)
-                           ),
-                           const SizedBox(width: 12),
-                         ],
-                         if (cloudiness > 10) ...[
-                           const Icon(Icons.wb_cloudy, color: Colors.white70, size: 16),
-                           const SizedBox(width: 4),
-                           Text('$cloudiness% Cloudy', style: const TextStyle(color: Colors.white70)),
-                         ] else if (rainIntensity == RainIntensity.none && fogIntensity == FogIntensity.none) ...[
-                           const Text('Clear', style: TextStyle(color: Colors.white70)),
-                         ],
+                        if (rainIntensity != RainIntensity.none) ...[
+                          Icon(
+                            Icons.water_drop,
+                            color: rainIntensity == RainIntensity.heavy
+                                ? Colors.blue[900]
+                                : Colors.blueAccent,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            rainIntensity == RainIntensity.heavy
+                                ? 'Heavy Rain'
+                                : 'Drizzle',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                        if (fogIntensity != FogIntensity.none) ...[
+                          const Icon(Icons.cloud, color: Colors.grey, size: 16),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${fogIntensity.name.toUpperCase()} Fog',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                        if (cloudiness > 10) ...[
+                          const Icon(
+                            Icons.wb_cloudy,
+                            color: Colors.white70,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$cloudiness% Cloudy',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                        ] else if (rainIntensity == RainIntensity.none &&
+                            fogIntensity == FogIntensity.none) ...[
+                          const Text(
+                            'Clear',
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                        ],
                       ],
                     ),
                   ],
                 ),
+              ),
+            ),
+
+            // === Risk Alert Cards (Top Right) ===
+            // Driven by the hosted ML model predictions via Railway backend
+            Positioned(
+              top: 60,
+              right: 16,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (_fogRisk)
+                    _buildRiskAlertCard(
+                      icon: '🌫️',
+                      title: 'High Fog Risk',
+                      message:
+                          'Visibility may be significantly reduced. Proceed with caution.',
+                      color: const Color(0xFF78909C),
+                    ),
+                  if (_slipRisk)
+                    _buildRiskAlertCard(
+                      icon: '⚠️',
+                      title: 'High Slip Risk',
+                      message:
+                          'Paths may be slippery or wet. Watch your step carefully.',
+                      color: const Color(0xFFFF9800),
+                    ),
+                  if (_heatStress)
+                    _buildRiskAlertCard(
+                      icon: '🥵',
+                      title: 'High Heat Stress',
+                      message:
+                          'Dangerous heat levels detected. Stay hydrated and seek shade.',
+                      color: const Color(0xFFF44336),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRiskAlertCard({
+    required String icon,
+    required String title,
+    required String message,
+    required Color color,
+  }) {
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 300),
+      child: Container(
+        width: 260,
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.95),
+          borderRadius: BorderRadius.circular(12),
+          border: Border(left: BorderSide(color: color, width: 5)),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Text(icon, style: const TextStyle(fontSize: 26)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: color,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    message,
+                    style: const TextStyle(fontSize: 11, color: Colors.black54),
+                  ),
+                ],
               ),
             ),
           ],
@@ -327,34 +543,40 @@ class FogOverlay extends StatelessWidget {
 
   double _getSigma() {
     switch (intensity) {
-      case FogIntensity.none: return 0;
-      case FogIntensity.low: return 2;
-      case FogIntensity.medium: return 6;
-      case FogIntensity.high: return 12;
+      case FogIntensity.none:
+        return 0;
+      case FogIntensity.low:
+        return 2;
+      case FogIntensity.medium:
+        return 6;
+      case FogIntensity.high:
+        return 12;
     }
   }
 
   double _getOpacity() {
     switch (intensity) {
-      case FogIntensity.none: return 0;
-      case FogIntensity.low: return 0.05;
-      case FogIntensity.medium: return 0.15;
-      case FogIntensity.high: return 0.35;
+      case FogIntensity.none:
+        return 0;
+      case FogIntensity.low:
+        return 0.05;
+      case FogIntensity.medium:
+        return 0.15;
+      case FogIntensity.high:
+        return 0.35;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (intensity == FogIntensity.none || !context.mounted) return const SizedBox.shrink();
-    
+    if (intensity == FogIntensity.none || !context.mounted)
+      return const SizedBox.shrink();
+
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 350),
       opacity: 1.0,
       child: BackdropFilter(
-        filter: ImageFilter.blur(
-          sigmaX: _getSigma(),
-          sigmaY: _getSigma(),
-        ),
+        filter: ImageFilter.blur(sigmaX: _getSigma(), sigmaY: _getSigma()),
         child: Container(
           color: Colors.white.withOpacity(_getOpacity()), // haze
         ),
@@ -456,7 +678,7 @@ class _RainPainter extends CustomPainter {
   final Random rng;
 
   _RainPainter(this.drops, this.intensity, Listenable repaint, this.rng)
-      : super(repaint: repaint);
+    : super(repaint: repaint);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -486,4 +708,3 @@ class _RainPainter extends CustomPainter {
   bool shouldRepaint(covariant _RainPainter oldDelegate) =>
       oldDelegate.intensity != intensity;
 }
-
