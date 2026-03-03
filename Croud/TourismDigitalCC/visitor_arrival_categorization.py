@@ -1,7 +1,7 @@
 import pandas as pd
 
 # Load your dataset
-df = pd.read_csv("D:\\USER DATA\\Documents\\Enhancing-tourism-digital-twins-with-real-time-Bilateral-data-across-sri-lanka\\sigiriya_visitor_arrival.csv")
+df = pd.read_csv("D:\\USER DATA\\Downloads\\Enhancing-tourism-digital-twins-with-real-time-Bilateral-data-across-sri-lanka\\sigiriya_visitor_arrival.csv")
 
 # Calculate thresholds using percentiles
 high_threshold = df['Estimated_Sigiriya_Visitors'].quantile(0.75)
