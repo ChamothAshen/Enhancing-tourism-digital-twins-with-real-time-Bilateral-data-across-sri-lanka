@@ -300,7 +300,8 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
         (_weatherCode >= 200 && _weatherCode < 300)) {
       return SkyCondition.storm;
     }
-    if (fogIntensity == FogIntensity.high || fogIntensity == FogIntensity.medium) {
+    if (fogIntensity == FogIntensity.high ||
+        fogIntensity == FogIntensity.medium) {
       return SkyCondition.foggy;
     }
     if (rainIntensity != RainIntensity.none) {
@@ -541,9 +542,15 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
                       ),
                       _debugLine('Weather code', '$_weatherCode'),
                       _debugLine('Cloudiness', '$cloudiness%'),
-                      _debugLine('Rain (1h)', '${_rainVolume.toStringAsFixed(2)} mm'),
+                      _debugLine(
+                        'Rain (1h)',
+                        '${_rainVolume.toStringAsFixed(2)} mm',
+                      ),
                       _debugLine('Fog', fogIntensity.name),
-                      _debugLine('Humidity', '${_humidity.toStringAsFixed(0)}%'),
+                      _debugLine(
+                        'Humidity',
+                        '${_humidity.toStringAsFixed(0)}%',
+                      ),
                       _debugLine(
                         'Updated',
                         _lastWeatherSync == null
