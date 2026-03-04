@@ -51,52 +51,70 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   // Tourist attractions - Synced with ML Model (2nd version updated with precise user coordinates)
   final Map<String, Map<String, dynamic>> _attractions = {
     'Sigiriya Entrance': {
-      'position': const LatLng(7.957674546451712, 80.75346579852389),
+      'position': const LatLng(7.957678, 80.753474),
       'icon': Icons.door_front_door,
       'category': 'Historical Site',
       'visitOrder': 1,
     },
     'Bridge over Moat': {
-      'position': const LatLng(7.957759746687992, 80.75360677640833),
+      'position': const LatLng(7.957762, 80.753608),
       'icon': Icons.straighten,
       'category': 'Historical Site',
       'visitOrder': 2,
     },
     'Water Garden': {
-      'position': const LatLng(7.957415931176702, 80.75471084073263),
+      'position': const LatLng(7.957415, 80.754714),
       'icon': Icons.park,
       'category': 'Nature Spot',
       'visitOrder': 3,
     },
     'Water Fountains': {
-      'position': const LatLng(7.957264470805178, 80.75561410058413),
+      'position': const LatLng(7.957265, 80.755617),
       'icon': Icons.opacity,
       'category': 'Nature Spot',
       'visitOrder': 4,
     },
     'Summer Palace': {
-      'position': const LatLng(7.95658849506351, 80.7561308770434),
+      'position': const LatLng(7.956593, 80.756135),
       'icon': Icons.foundation,
       'category': 'Historical Site',
       'visitOrder': 5,
     },
     'Caves with Inscriptions': {
-      'position': const LatLng(7.957884271426544, 80.7578080290472),
+      'position': const LatLng(7.957886, 80.757803),
       'icon': Icons.architecture,
       'category': 'Historical Site',
       'visitOrder': 6,
     },
     'Lion\'s Paw': {
-      'position': const LatLng(7.957720004148874, 80.76027366845629),
+      'position': const LatLng(7.957729, 80.760275),
       'icon': Icons.pets,
       'category': 'Main Attraction',
       'visitOrder': 7,
     },
     'Main Palace': {
-      'position': const LatLng(7.957020481195492, 80.75984744010141),
+      'position': const LatLng(7.957017, 80.759852),
       'icon': Icons.castle,
       'category': 'Main Attraction',
       'visitOrder': 8,
+    },
+    'Boulder Gardens': {
+      'position': const LatLng(7.954621, 80.754708),
+      'icon': Icons.landscape,
+      'category': 'Nature Spot',
+      'visitOrder': 9,
+    },
+    'Mirror Wall': {
+      'position': const LatLng(7.95733,  80.75935),
+      'icon': Icons.auto_awesome,
+      'category': 'Main Attraction',
+      'visitOrder': 10,
+    },
+    'Sigiriya Museum': {
+      'position': const LatLng(7.957001, 80.752003),
+      'icon': Icons.museum,
+      'category': 'Historical Site',
+      'visitOrder': 11,
     },
   };
 
