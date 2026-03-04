@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class WeatherService {
-  // Replace with your actual OpenWeatherMap API Key
-  static const String _apiKey = 'e81c34fa0243116c02c261187618fa48';
+  // Load API key from .env file
+  static String get _apiKey => dotenv.env['OPENWEATHER_API_KEY'] ?? '';
   static const double _lat = 7.957;
   static const double _lon = 80.76;
   static const String _baseUrl =

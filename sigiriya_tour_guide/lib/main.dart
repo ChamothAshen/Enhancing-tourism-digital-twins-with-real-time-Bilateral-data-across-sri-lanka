@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'model_viewer_screen.dart';
 
 // ===== TESTING MODE =====
@@ -16,7 +17,10 @@ const double MOCK_LAT = 7.95748472889413;
 const double MOCK_LNG = 80.75468987370043;
 // =======================
 
-void main() => runApp(const MyApp());
+Future<void> main() async {
+  await dotenv.load(fileName: ".env");
+  runApp(const MyApp());
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
