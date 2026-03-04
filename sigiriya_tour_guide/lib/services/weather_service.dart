@@ -4,9 +4,9 @@ import 'package:http/http.dart' as http;
 
 class WeatherService {
   // Replace with your actual OpenWeatherMap API Key
-  static const String _apiKey = 'API_KEY_PLACEHOLDER';
+  static const String _apiKey = 'e81c34fa0243116c02c261187618fa48';
   static const double _lat = 7.957;
-  static const double _lon = 80.760;
+  static const double _lon = 80.76;
   static const String _baseUrl =
       'https://api.openweathermap.org/data/2.5/weather';
 
