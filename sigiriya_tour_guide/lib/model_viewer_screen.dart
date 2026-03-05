@@ -157,13 +157,24 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
     if (prediction == null || !mounted) return;
 
     setState(() {
-      _fogRisk = prediction.fogRisk;
-      _slipRisk = prediction.slipRisk;
-      _heatStress = prediction.heatStress;
+      // Cross-validate ML predictions with actual weather conditions
+      // to avoid misleading alerts when conditions clearly don't support them.
+      _fogRisk =
+          prediction.fogRisk &&
+          (fogIntensity != FogIntensity.none ||
+              _humidity >= 85 ||
+              weather.visibility < 5000);
+      _slipRisk =
+          prediction.slipRisk &&
+          (rainIntensity != RainIntensity.none ||
+              _rainVolume > 0 ||
+              _humidity >= 80);
+      _heatStress =
+          prediction.heatStress && (currentTemp != null && currentTemp! >= 28);
     });
 
     debugPrint(
-      'Risk Alerts Updated: Fog=$_fogRisk, Slip=$_slipRisk, Heat=$_heatStress',
+      'Risk Alerts Updated (cross-validated): Fog=$_fogRisk, Slip=$_slipRisk, Heat=$_heatStress',
     );
   }
 
@@ -264,9 +275,9 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
         tintStrength = 0.28;
         break;
       case TimePreset.night:
-        topTint = const Color(0xFF050A14);
-        horizonTint = const Color(0xFF0D1B2A);
-        tintStrength = 0.42;
+        topTint = const Color(0xFF071428);
+        horizonTint = const Color(0xFF0D2240);
+        tintStrength = 0.58;
         break;
     }
 
@@ -282,6 +293,16 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
       final coolFactor = ((12 - currentTemp!) / 12).clamp(0.0, 1.0) * 0.18;
       skyColors = skyColors
           .map((c) => Color.lerp(c, const Color(0xFF90CAF9), coolFactor)!)
+          .toList();
+    }
+
+    // Night cloudiness: cloudy nights reflect ambient light, creating a subtle glow.
+    // Clear nights stay deep blue-black; overcast nights get a muted navy-grey uplift.
+    if (preset == TimePreset.night && cloudiness > 20) {
+      final cloudGlow = ((cloudiness - 20) / 80.0).clamp(0.0, 1.0) * 0.20;
+      const glowColor = Color(0xFF1C2D4A); // Muted blue-grey cloud glow
+      skyColors = skyColors
+          .map((c) => Color.lerp(c, glowColor, cloudGlow)!)
           .toList();
     }
 
@@ -323,7 +344,7 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
       case TimePreset.evening:
         return 0.18;
       case TimePreset.night:
-        return 0.35;
+        return 0.30;
     }
   }
 
@@ -369,7 +390,21 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
               child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 300),
                 opacity: _nightTintOpacity(),
-                child: Container(color: Colors.black),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Color(0xFF030B18), // Deep dark blue at zenith
+                        Color(0xFF081530), // Deep navy mid-sky
+                        Color(0xFF0C1E3D), // Rich midnight blue
+                        Color(0xFF152D50), // Navy blue at horizon
+                      ],
+                      stops: [0.0, 0.35, 0.65, 1.0],
+                    ),
+                  ),
+                ),
               ),
             ),
 
@@ -527,7 +562,7 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'LIVE API DEBUG',
+                        'LIVE WEATHER CONDITION',
                         style: TextStyle(
                           color: Colors.lightGreenAccent,
                           fontSize: 11,
