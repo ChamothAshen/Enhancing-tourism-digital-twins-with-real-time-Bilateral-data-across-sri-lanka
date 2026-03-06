@@ -589,7 +589,7 @@ def test_camera_quick():
     detector.test_camera(camera_id=0)
 
 
-def capture_and_detect_picamera2(duration=5, output_video="crowd_detection_output.mp4", fps=10):
+def capture_and_detect_picamera2(duration=5, output_video="crowd_detection_output.mp4", fps=10, resolution=(1280, 720), conf=0.25):
     """
     Capture video using picamera2 and run crowd detection on each frame.
     Works on Raspberry Pi with headless connection.
@@ -598,6 +598,8 @@ def capture_and_detect_picamera2(duration=5, output_video="crowd_detection_outpu
         duration: Recording duration in seconds (default: 5)
         output_video: Output video filename with detections
         fps: Frames per second for capture (default: 10, lower = faster processing)
+        resolution: Camera resolution tuple (width, height) - default 1280x720
+        conf: Confidence threshold for detection (default: 0.25)
     
     Install requirements:
         sudo apt install python3-picamera2
@@ -615,19 +617,21 @@ def capture_and_detect_picamera2(duration=5, output_video="crowd_detection_outpu
     print("=" * 60)
     print(f"Recording duration: {duration} seconds")
     print(f"Target FPS: {fps}")
+    print(f"Resolution: {resolution[0]}x{resolution[1]}")
+    print(f"Confidence threshold: {conf}")
     print(f"Output file: {output_video}")
     print("=" * 60)
     
-    # Initialize detector
-    detector = CrowdDetectionONNX()
+    # Initialize detector with adjusted confidence
+    detector = CrowdDetectionONNX(conf=conf)
     
     # Initialize PiCamera2
     print("\nInitializing PiCamera2...")
     picam2 = Picamera2()
     
-    # Configure camera - use a reasonable resolution for detection
+    # Configure camera with higher resolution for better detection
     config = picam2.create_preview_configuration(
-        main={"size": (640, 480), "format": "RGB888"}
+        main={"size": resolution, "format": "RGB888"}
     )
     picam2.configure(config)
     
@@ -646,6 +650,7 @@ def capture_and_detect_picamera2(duration=5, output_video="crowd_detection_outpu
     # Storage for frames and stats
     frames = []
     detection_counts = []
+    all_detections = []  # Store all detection info for analysis
     
     print(f"\nCapturing {total_frames} frames...")
     
@@ -666,39 +671,46 @@ def capture_and_detect_picamera2(duration=5, output_video="crowd_detection_outpu
             detections = detector.detect(frame_bgr)
             num_detections = len(detections)
             detection_counts.append(num_detections)
+            all_detections.append(detections)
             
-            # Draw detections on frame
-            annotated = draw_detections(frame_bgr, detections)
+            # Draw detections on frame with thicker boxes for visibility
+            annotated = draw_detections_enhanced(frame_bgr, detections)
             
-            # Add info overlay
+            # Add info overlay - larger text for higher resolution
+            font_scale = resolution[0] / 640  # Scale font based on resolution
+            thickness = max(2, int(font_scale * 2))
+            
+            # Background rectangle for text visibility
+            cv2.rectangle(annotated, (5, 5), (350, 80), (0, 0, 0), -1)
+            
             cv2.putText(
                 annotated,
-                f"People: {num_detections}",
-                (10, 30),
+                f"People Count: {num_detections}",
+                (10, 40),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                1,
+                font_scale * 0.8,
                 (0, 255, 0),
-                2
+                thickness
             )
             
             # Add timestamp
             elapsed = time.time() - start_time
             cv2.putText(
                 annotated,
-                f"Time: {elapsed:.1f}s",
-                (10, 60),
+                f"Time: {elapsed:.1f}s | Frame: {frame_count+1}/{total_frames}",
+                (10, 70),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
+                font_scale * 0.5,
                 (255, 255, 255),
-                2
+                max(1, thickness - 1)
             )
             
             frames.append(annotated)
             frame_count += 1
             
-            # Progress update every 10 frames
-            if frame_count % 10 == 0:
-                print(f"  Captured {frame_count}/{total_frames} frames, {num_detections} people detected")
+            # Progress update every 5 frames
+            if frame_count % 5 == 0:
+                print(f"  Frame {frame_count}/{total_frames}: {num_detections} people detected")
             
             # Wait to maintain target FPS
             elapsed_frame = time.time() - frame_start
@@ -735,9 +747,15 @@ def capture_and_detect_picamera2(duration=5, output_video="crowd_detection_outpu
     max_count = max(detection_counts) if detection_counts else 0
     min_count = min(detection_counts) if detection_counts else 0
     
+    # Calculate mode (most common count)
+    from collections import Counter
+    count_freq = Counter(detection_counts)
+    mode_count = count_freq.most_common(1)[0][0] if count_freq else 0
+    
     print("\n" + "=" * 60)
     print("CAPTURE COMPLETE!")
     print("=" * 60)
+    print(f"Resolution: {width}x{height}")
     print(f"Total frames captured: {len(frames)}")
     print(f"Total time: {total_time:.2f}s")
     print(f"Actual FPS: {len(frames)/total_time:.2f}")
@@ -745,23 +763,121 @@ def capture_and_detect_picamera2(duration=5, output_video="crowd_detection_outpu
     print("-" * 60)
     print("CROWD DETECTION STATISTICS:")
     print(f"  Average people count: {avg_count:.1f}")
+    print(f"  Most frequent count (mode): {mode_count}")
     print(f"  Maximum people count: {max_count}")
     print(f"  Minimum people count: {min_count}")
+    print(f"  Detection confidence: {conf}")
     print("=" * 60)
     
-    # Also save a summary frame (last frame with most detections)
+    # Save multiple summary frames
+    # 1. Frame with maximum detections
     max_idx = detection_counts.index(max_count) if detection_counts else 0
-    summary_path = output_video.replace('.mp4', '_summary.jpg')
+    summary_path = output_video.replace('.mp4', '_max_detection.jpg')
     cv2.imwrite(summary_path, frames[max_idx])
-    print(f"Summary frame saved: {summary_path}")
+    print(f"Max detection frame saved: {summary_path}")
+    
+    # 2. First frame
+    first_path = output_video.replace('.mp4', '_first_frame.jpg')
+    cv2.imwrite(first_path, frames[0])
+    print(f"First frame saved: {first_path}")
+    
+    # 3. Last frame
+    last_path = output_video.replace('.mp4', '_last_frame.jpg')
+    cv2.imwrite(last_path, frames[-1])
+    print(f"Last frame saved: {last_path}")
     
     return {
         'total_frames': len(frames),
         'avg_count': avg_count,
         'max_count': max_count,
         'min_count': min_count,
-        'output_video': output_video
+        'mode_count': mode_count,
+        'output_video': output_video,
+        'resolution': (width, height)
     }
+
+
+def draw_detections_enhanced(image, detections, class_names=CLASS_NAMES):
+    """
+    Draw detection boxes with enhanced visibility for higher resolution videos
+    
+    Args:
+        image: BGR image
+        detections: List of (x1, y1, x2, y2, confidence, class_id)
+        class_names: List of class names
+    
+    Returns:
+        Annotated image
+    """
+    annotated = image.copy()
+    height, width = image.shape[:2]
+    
+    # Scale line thickness and font based on image size
+    scale_factor = min(width, height) / 480
+    line_thickness = max(2, int(2 * scale_factor))
+    font_scale = max(0.5, 0.5 * scale_factor)
+    
+    colors = [
+        (0, 255, 0),    # Green
+        (255, 0, 0),    # Blue
+        (0, 0, 255),    # Red
+        (255, 255, 0),  # Cyan
+        (0, 255, 255),  # Yellow
+    ]
+    
+    for i, det in enumerate(detections):
+        x1, y1, x2, y2, conf, class_id = det
+        
+        color = colors[class_id % len(colors)]
+        
+        # Draw bounding box with thicker lines
+        cv2.rectangle(annotated, (x1, y1), (x2, y2), color, line_thickness)
+        
+        # Draw corner markers for better visibility
+        corner_length = max(10, int(20 * scale_factor))
+        # Top-left
+        cv2.line(annotated, (x1, y1), (x1 + corner_length, y1), color, line_thickness + 1)
+        cv2.line(annotated, (x1, y1), (x1, y1 + corner_length), color, line_thickness + 1)
+        # Top-right
+        cv2.line(annotated, (x2, y1), (x2 - corner_length, y1), color, line_thickness + 1)
+        cv2.line(annotated, (x2, y1), (x2, y1 + corner_length), color, line_thickness + 1)
+        # Bottom-left
+        cv2.line(annotated, (x1, y2), (x1 + corner_length, y2), color, line_thickness + 1)
+        cv2.line(annotated, (x1, y2), (x1, y2 - corner_length), color, line_thickness + 1)
+        # Bottom-right
+        cv2.line(annotated, (x2, y2), (x2 - corner_length, y2), color, line_thickness + 1)
+        cv2.line(annotated, (x2, y2), (x2, y2 - corner_length), color, line_thickness + 1)
+        
+        # Draw label with person number
+        class_name = class_names[class_id] if class_id < len(class_names) else f"class_{class_id}"
+        label = f"#{i+1} {conf:.0%}"
+        
+        # Get label size
+        (label_width, label_height), baseline = cv2.getTextSize(
+            label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, max(1, int(scale_factor))
+        )
+        
+        # Draw label background
+        cv2.rectangle(
+            annotated,
+            (x1, y1 - label_height - baseline - 5),
+            (x1 + label_width + 5, y1),
+            color,
+            -1
+        )
+        
+        # Draw label text
+        cv2.putText(
+            annotated,
+            label,
+            (x1 + 2, y1 - baseline - 2),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            font_scale,
+            (0, 0, 0),
+            max(1, int(scale_factor))
+        )
+    
+    return annotated
 
 
 # Main execution
@@ -774,7 +890,9 @@ if __name__ == "__main__":
     parser.add_argument("--camera", type=int, default=None, help="Camera ID for live test")
     parser.add_argument("--picamera", action="store_true", help="Use PiCamera2 to capture and detect")
     parser.add_argument("--duration", type=int, default=5, help="Recording duration in seconds (for --picamera)")
-    parser.add_argument("--fps", type=int, default=10, help="Frames per second (for --picamera)")
+    parser.add_argument("--fps", type=int, default=5, help="Frames per second (for --picamera, lower=faster)")
+    parser.add_argument("--width", type=int, default=1280, help="Camera width (for --picamera)")
+    parser.add_argument("--height", type=int, default=720, help="Camera height (for --picamera)")
     parser.add_argument("--model", type=str, default=MODEL_PATH, help="Path to ONNX model")
     parser.add_argument("--conf", type=float, default=CONFIDENCE_THRESHOLD, help="Confidence threshold")
     parser.add_argument("--iou", type=float, default=IOU_THRESHOLD, help="IoU threshold for NMS")
@@ -791,7 +909,9 @@ if __name__ == "__main__":
         capture_and_detect_picamera2(
             duration=args.duration,
             output_video=output_video,
-            fps=args.fps
+            fps=args.fps,
+            resolution=(args.width, args.height),
+            conf=args.conf
         )
     
     elif args.image:
@@ -835,7 +955,9 @@ if __name__ == "__main__":
         print("  python test_model_onnx.py --folder ./test_images")
         print("  python test_model_onnx.py --camera 0")
         print("  python test_model_onnx.py --picamera --duration 5")
-        print("  python test_model_onnx.py --picamera --duration 10 --fps 5 --output my_video.mp4")
+        print("  python test_model_onnx.py --picamera --duration 10 --fps 5")
+        print("  python test_model_onnx.py --picamera --width 1920 --height 1080")
+        print("  python test_model_onnx.py --picamera --conf 0.3  (adjust confidence)")
         print("=" * 60)
         
         # Initialize detector
