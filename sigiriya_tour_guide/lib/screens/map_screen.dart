@@ -225,8 +225,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   void _showSimulateLocationDialog() {
+    String? selectedLocation;
     final latController = TextEditingController();
     final lngController = TextEditingController();
+    bool showManualInput = false;
 
     // Fill with current position if available for convenience
     if (_currentPosition != null) {
@@ -236,75 +238,274 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.terminal, color: AppTheme.primaryGreen),
-            SizedBox(width: 10),
-            Text('Simulate Location'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Enter custom coordinates to test proximity triggers.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: latController,
-              decoration: const InputDecoration(
-                labelText: 'Latitude',
-                hintText: 'e.g. 7.9576',
-                border: OutlineInputBorder(),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryGreen.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.location_searching, color: AppTheme.primaryGreen, size: 24),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: lngController,
-              decoration: const InputDecoration(
-                labelText: 'Longitude',
-                hintText: 'e.g. 80.7534',
-                border: OutlineInputBorder(),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Test Location',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      'Select a predefined location or enter custom coordinates',
+                      style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.normal),
+                    ),
+                  ],
+                ),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              final lat = double.tryParse(latController.text);
-              final lng = double.tryParse(lngController.text);
-              if (lat != null && lng != null) {
-                Navigator.pop(context);
-                final newPos = LatLng(lat, lng);
-                _updateUserLocation(newPos);
-                _mapController.move(newPos, 17.5);
-                
-                // Extra feedback
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('📍 Simulated Location set to $lat, $lng'),
-                    backgroundColor: AppTheme.primaryGreen,
-                    behavior: SnackBarBehavior.floating,
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Predefined locations dropdown
+                const Text(
+                  'Quick Select Location:',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryGreen,
-              foregroundColor: Colors.white,
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: selectedLocation,
+                      hint: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: Text('Choose a location to test...'),
+                      ),
+                      isExpanded: true,
+                      items: _attractions.entries.map((entry) {
+                        final name = entry.key;
+                        final data = entry.value;
+                        final position = data['position'] as LatLng;
+                        final icon = data['icon'] as IconData;
+                        final category = data['category'] as String;
+                        
+                        return DropdownMenuItem<String>(
+                          value: name,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF880E4F).withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Icon(icon, size: 16, color: const Color(0xFF880E4F)),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        name,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey[600],
+                                          fontFamily: 'monospace',
+                                        ),
+                                      ),
+                                      Text(
+                                        category,
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: AppTheme.primaryGreen,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (String? value) {
+                        setDialogState(() {
+                          selectedLocation = value;
+                          if (value != null) {
+                            final position = _attractions[value]!['position'] as LatLng;
+                            latController.text = position.latitude.toString();
+                            lngController.text = position.longitude.toString();
+                          }
+                        });
+                      },
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 20),
+                
+                // Toggle for manual input
+                Row(
+                  children: [
+                    const Text(
+                      'Or enter custom coordinates:',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                    ),
+                    const Spacer(),
+                    Switch(
+                      value: showManualInput,
+                      onChanged: (value) {
+                        setDialogState(() {
+                          showManualInput = value;
+                        });
+                      },
+                      activeColor: AppTheme.primaryGreen,
+                    ),
+                  ],
+                ),
+                
+                if (showManualInput) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: latController,
+                    decoration: const InputDecoration(
+                      labelText: 'Latitude',
+                      hintText: 'e.g. 7.957511',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.my_location),
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: lngController,
+                    decoration: const InputDecoration(
+                      labelText: 'Longitude',
+                      hintText: 'e.g. 80.759083',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.place),
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  ),
+                ],
+                
+                const SizedBox(height: 16),
+                
+                // Info box
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.blue.shade600, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'This will simulate your GPS location for testing the location detection APIs.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.blue.shade700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            child: const Text('Simulate'),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                final lat = double.tryParse(latController.text);
+                final lng = double.tryParse(lngController.text);
+                if (lat != null && lng != null) {
+                  Navigator.pop(context);
+                  final newPos = LatLng(lat, lng);
+                  _updateUserLocation(newPos);
+                  _mapController.move(newPos, 17.5);
+                  
+                  // Enhanced feedback with location name if selected
+                  final locationName = selectedLocation ?? 'Custom Location';
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          const Icon(Icons.location_on, color: Colors.white, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Testing: $locationName',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                Text(
+                                  '${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}',
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      backgroundColor: AppTheme.primaryGreen,
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 4),
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter valid coordinates'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.location_searching, size: 18),
+              label: const Text('Test Location'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryGreen,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
