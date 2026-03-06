@@ -5,7 +5,7 @@ class AppTheme {
   static const Color secondaryGreen = Color(0xFF2E7D32);
   static const Color stoneWhite = Color(0xFFF5F5F5);
   static const Color darkStone = Color(0xFF2D2D2D);
-  static const Color accentMaroon = Color(0xFF880E4F);
+  static const Color accentMaroon = Color.fromARGB(255, 148, 27, 91);
 
   static ThemeData get lightTheme {
     return ThemeData(

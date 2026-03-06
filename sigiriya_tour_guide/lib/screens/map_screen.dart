@@ -24,6 +24,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   String _selectedCategory = 'All';
   late AnimationController _pulseController;
   int _currentStep = 0;
+  bool _showAchievementNotification = false;
   
   String? _mlLocationName;
   String? _mlDescription;
@@ -122,7 +123,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   final List<String> _categories = [
     'All',
-    'Main Attraction',
     'Historical Site',
     'Nature Spot',
   ];
@@ -293,6 +293,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                         child: Text('Choose a location to test...'),
                       ),
                       isExpanded: true,
+                      itemHeight: 72,
                       items: _attractions.entries.map((entry) {
                         final name = entry.key;
                         final data = entry.value;
@@ -309,10 +310,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                                 Container(
                                   padding: const EdgeInsets.all(6),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF880E4F).withOpacity(0.1),
+                                    color: const Color(0xFFFF6E00).withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
-                                  child: Icon(icon, size: 16, color: const Color(0xFF880E4F)),
+                                  child: Icon(icon, size: 16, color: const Color(0xFFFF6E00)),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
@@ -716,11 +717,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isNearest ? AppTheme.primaryGreen : const Color(0xFF880E4F),
+                    color: isNearest ? AppTheme.primaryGreen : const Color(0xFFFF6E00),
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: (isNearest ? AppTheme.primaryGreen : const Color(0xFF880E4F))
+                        color: (isNearest ? AppTheme.primaryGreen : const Color(0xFFFF6E00))
                             .withOpacity(0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 3),
@@ -776,28 +777,17 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                             color: isNearest ? AppTheme.primaryGreen : Colors.grey[600],
                           ),
                           const SizedBox(width: 4),
-                          Text(
-                            nearby.distanceMeters < 1000
-                                ? '${nearby.distanceMeters.toStringAsFixed(0)} meters'
-                                : '${nearby.distanceKm.toStringAsFixed(2)} km',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: isNearest ? AppTheme.primaryGreen : Colors.grey[600],
-                              fontWeight: isNearest ? FontWeight.w600 : FontWeight.normal,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Icon(
-                            Icons.timer_outlined,
-                            size: 14,
-                            color: Colors.grey[500],
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '~${(nearby.distanceMeters / 80).ceil()} min walk',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[500],
+                          Expanded(
+                            child: Text(
+                              nearby.distanceMeters < 1000
+                                  ? '${nearby.distanceMeters.toStringAsFixed(0)}m • ~${(nearby.distanceMeters / 80).ceil()}min walk'
+                                  : '${nearby.distanceKm.toStringAsFixed(2)}km • ~${(nearby.distanceMeters / 80).ceil()}min walk',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isNearest ? AppTheme.primaryGreen : Colors.grey[600],
+                                fontWeight: isNearest ? FontWeight.w600 : FontWeight.normal,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -850,7 +840,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           SnackBar(
             content: Text('📍 Proximity Trigger: $foundAttraction'),
             duration: const Duration(seconds: 3),
-            backgroundColor: const Color(0xFF880E4F),
+            backgroundColor: const Color(0xFFFF6E00),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -944,7 +934,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                             height: 70 + (_pulseController.value * 20),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: const Color(0xFF880E4F)
+                              color: const Color(0xFFFF6E00)
                                   .withOpacity(0.3 - (_pulseController.value * 0.3)),
                             ),
                           ),
@@ -953,7 +943,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                           width: isCurrentStep ? 45 : 38,
                           height: isCurrentStep ? 45 : 38,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF880E4F),
+                            color: const Color(0xFFFF6E00),
                             shape: BoxShape.circle,
                             border: Border.all(
                               color: Colors.white,
@@ -982,7 +972,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                         margin: const EdgeInsets.only(top: 4),
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF880E4F),
+                          color: const Color(0xFFFF6E00),
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
@@ -1078,7 +1068,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             nextAttraction['position'] as LatLng,
           ],
           strokeWidth: 4.5,
-          color: const Color(0xFF880E4F).withOpacity(0.85),
+          color: const Color(0xFFFF6E00).withOpacity(0.85),
           borderStrokeWidth: 1.5,
           borderColor: Colors.white.withOpacity(0.5),
         ),
@@ -1086,6 +1076,238 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     }
 
     return paths;
+  }
+
+  // Helper methods for enhanced progress bar
+  int _getVisitedCount() {
+    // Count locations that have been visited (current step + completed locations)
+    Set<String> visited = {};
+    
+    // Add completed route locations
+    for (int i = 0; i <= _currentStep && i < _visitingRoute.length; i++) {
+      visited.add(_visitingRoute[i]);
+    }
+    
+    // Add any other visited locations (if user explored off-route)
+    // This could be extended to track actual visits
+    
+    return visited.length;
+  }
+
+  IconData _getProgressIcon() {
+    final progress = _getVisitedCount() / 11;
+    if (progress >= 1.0) return Icons.emoji_events; // Trophy for completion
+    if (progress >= 0.8) return Icons.star; // Star for high progress
+    if (progress >= 0.5) return Icons.explore; // Explorer icon for mid progress
+    return Icons.location_on; // Basic location icon for start
+  }
+
+  Widget _getAchievementBadge() {
+    final visitedCount = _getVisitedCount();
+    
+    if (visitedCount >= 11) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(colors: [Colors.amber, Colors.orange]),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.emoji_events, color: Colors.white, size: 12),
+            SizedBox(width: 2),
+            Text('EXPLORER', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      );
+    } else if (visitedCount >= 8) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.purple,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.star, color: Colors.white, size: 12),
+            SizedBox(width: 2),
+            Text('ADVENTURER', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      );
+    } else if (visitedCount >= 5) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.blue,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.explore, color: Colors.white, size: 12),
+            SizedBox(width: 2),
+            Text('DISCOVERER', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      );
+    }
+    
+    return const SizedBox.shrink();
+  }
+
+  Color _getProgressColor() {
+    final progress = _getVisitedCount() / 11;
+    if (progress >= 1.0) return Colors.amber; // Gold for completion
+    if (progress >= 0.8) return Colors.purple; // Purple for high progress
+    if (progress >= 0.5) return Colors.blue; // Blue for mid progress
+    return AppTheme.primaryGreen; // Green for beginning
+  }
+
+  String _getMotivationalMessage() {
+    final visitedCount = _getVisitedCount();
+    final remaining = 11 - visitedCount;
+    
+    switch (visitedCount) {
+      case 0:
+        return "🚀 Start your adventure! 11 amazing places await discovery!";
+      case 1:
+        return "🎉 Great start! ${remaining} more incredible locations to explore!";
+      case >= 2 && < 5:
+        return "🌟 You're doing amazing! Keep exploring - ${remaining} locations left!";
+      case >= 5 && < 8:
+        return "🔥 Halfway there! Only ${remaining} more places to complete your journey!";
+      case >= 8 && < 11:
+        return "⭐ Almost there! Just ${remaining} more location${remaining == 1 ? '' : 's'} to become a true Sigiriya Explorer!";
+      case 11:
+        return "🏆 CONGRATULATIONS! You've become a Sigiriya Master Explorer!";
+      default:
+        return "🗺️ Continue your amazing journey through Sigiriya!";
+    }
+  }
+
+  String _getCompactMotivationalMessage() {
+    final visitedCount = _getVisitedCount();
+    final remaining = 11 - visitedCount;
+    
+    switch (visitedCount) {
+      case 1:
+        return "🎉 Great start! ${remaining} more to explore!";
+      case >= 2 && < 5:
+        return "🌟 Keep going! ${remaining} locations left!";
+      case >= 5 && < 8:
+        return "🔥 Halfway there! ${remaining} more to go!";
+      case >= 8 && < 11:
+        return "⭐ Almost done! Just ${remaining} more!";
+      case 11:
+        return "🏆 Master Explorer achieved!";
+      default:
+        return "Continue exploring Sigiriya!";
+    }
+  }
+
+  void _showProgressDetail() {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [_getProgressColor(), _getProgressColor().withOpacity(0.8)],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.emoji_events, color: Colors.white, size: 24),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Your Journey Progress',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close, color: Colors.white),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      '${_getVisitedCount()} out of 11 locations discovered!',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    LinearProgressIndicator(
+                      value: _getVisitedCount() / 11,
+                      backgroundColor: Colors.white.withOpacity(0.3),
+                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      _getMotivationalMessage(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getLatestAchievement() {
+    final visitedCount = _getVisitedCount();
+    switch (visitedCount) {
+      case 1:
+        return '🎉 Achievement Unlocked: First Steps!';
+      case 3:
+        return '🌟 Achievement Unlocked: Explorer!';
+      case 5:
+        return '🔥 Achievement Unlocked: Discoverer!';
+      case 8:
+        return '⭐ Achievement Unlocked: Adventurer!';
+      case 11:
+        return '🏆 Achievement Unlocked: Sigiriya Master!';
+      default:
+        return '✨ Keep exploring to unlock achievements!';
+    }
   }
 
   @override
@@ -1180,10 +1402,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                              LatLng(7.9565, 80.7615),
                              LatLng(7.9565, 80.7600),
                            ],
-                           color: const Color(0xFF880E4F).withOpacity(0.12),
+                           color: const Color(0xFFFF6E00).withOpacity(0.12),
                            isFilled: true,
                            borderStrokeWidth: 1.5,
-                           borderColor: const Color(0xFF880E4F).withOpacity(0.25),
+                           borderColor: const Color(0xFFFF6E00).withOpacity(0.25),
                          ),
                        ],
                      ),
@@ -1512,7 +1734,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                                     style: const TextStyle(fontWeight: FontWeight.w600),
                                   ),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF880E4F),
+                                    backgroundColor: const Color(0xFFFF6E00),
                                     foregroundColor: Colors.white,
                                     padding: const EdgeInsets.symmetric(vertical: 14),
                                     shape: RoundedRectangleBorder(
@@ -1541,7 +1763,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
                 // Category filters
                 Positioned(
-                  top: MediaQuery.of(context).padding.top + 80,
+                  top: MediaQuery.of(context).padding.top + 170,
                   left: 0,
                   right: 0,
                   child: SizedBox(
@@ -1588,83 +1810,218 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                   ),
                 ),
 
-                // Progress indicator
+                // Interactive Gamified Progress Bar
                 Positioned(
-                  top: MediaQuery.of(context).padding.top + 140,
+                  top: MediaQuery.of(context).padding.top + 80,
                   left: 16,
                   right: 16,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: BackdropFilter(
-                      filter: ColorFilter.mode(Colors.white.withOpacity(0.01), BlendMode.dstOver),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.8),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.white.withOpacity(0.3)),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.08),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
+                  child: GestureDetector(
+                    onTap: () => _showProgressDetail(),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            _getProgressColor().withOpacity(0.95),
+                            _getProgressColor().withOpacity(0.85),
                           ],
                         ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFF1B5E20), Color(0xFF2E7D32)],
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _getProgressColor().withOpacity(0.3),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
+                          ),
+                          BoxShadow(
+                            color: Colors.white.withOpacity(0.8),
+                            blurRadius: 20,
+                            offset: const Offset(0, -2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          // Animated Progress Ring
+                          Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white.withOpacity(0.2),
                                 ),
-                                borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Icon(
-                                Icons.route,
-                                color: Colors.white,
-                                size: 20,
+                              SizedBox(
+                                width: 45,
+                                height: 45,
+                                child: CircularProgressIndicator(
+                                  value: _getVisitedCount() / 11,
+                                  strokeWidth: 4,
+                                  backgroundColor: Colors.white.withOpacity(0.3),
+                                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(
-                                    'STORY PROGRESS • ${_currentStep + 1}/${_visitingRoute.length}',
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      letterSpacing: 1.2,
-                                      color: Color(0xFF4E342E),
-                                      fontWeight: FontWeight.w800,
-                                    ),
+                                  Icon(
+                                    _getProgressIcon(),
+                                    color: Colors.white,
+                                    size: 16,
                                   ),
-                                  const SizedBox(height: 2),
                                   Text(
-                                    _visitingRoute[_currentStep],
+                                    '${_getVisitedCount()}',
                                     style: const TextStyle(
-                                      fontSize: 15,
+                                      color: Colors.white,
+                                      fontSize: 10,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
                                     ),
                                   ),
                                 ],
                               ),
+                            ],
+                          ),
+                          
+                          const SizedBox(width: 14),
+                          
+                          // Progress Info
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Text(
+                                      'DISCOVER SIGIRIYA',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 1.2,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    _getAchievementBadge(),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${_getVisitedCount()} of 11 Places Explored',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                
+                                // Interactive Progress Dots
+                                Row(
+                                  children: List.generate(11, (index) {
+                                    final isVisited = index < _getVisitedCount();
+                                    return AnimatedContainer(
+                                      duration: Duration(milliseconds: 300 + (index * 50)),
+                                      margin: const EdgeInsets.only(right: 4),
+                                      width: isVisited ? 12 : 8,
+                                      height: isVisited ? 12 : 8,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: isVisited 
+                                            ? Colors.white 
+                                            : Colors.white.withOpacity(0.3),
+                                        boxShadow: isVisited ? [
+                                          BoxShadow(
+                                            color: Colors.white.withOpacity(0.5),
+                                            blurRadius: 6,
+                                            spreadRadius: 1,
+                                          ),
+                                        ] : null,
+                                      ),
+                                    );
+                                  }),
+                                ),
+                              ],
                             ),
-                            CircularProgressIndicator(
-                              value: (_currentStep + 1) / _visitingRoute.length,
-                              strokeWidth: 3,
-                              color: const Color(0xFF1B5E20),
-                              backgroundColor: const Color(0xFF1B5E20).withOpacity(0.1),
+                          ),
+                          
+                          // Interactive Arrow
+                          AnimatedRotation(
+                            turns: _getVisitedCount() > 0 ? 0 : 0.5,
+                            duration: const Duration(milliseconds: 300),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withOpacity(0.2),
+                              ),
+                              child: const Icon(
+                                Icons.touch_app,
+                                color: Colors.white,
+                                size: 20,
+                              ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
+
+                // Floating Achievement Notification
+                if (_showAchievementNotification)
+                  Positioned(
+                    top: MediaQuery.of(context).padding.top + 160,
+                    left: 20,
+                    right: 20,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 500),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.amber, Colors.orange],
+                        ),
+                        borderRadius: BorderRadius.circular(15),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.amber.withOpacity(0.4),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.celebration,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _getLatestAchievement(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => setState(() => _showAchievementNotification = false),
+                            icon: const Icon(Icons.close, color: Colors.white, size: 18),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
 
                 // Selected location info
                 if (_selectedLocation != null)
@@ -1701,11 +2058,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                                   Container(
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF880E4F),
+                                      color: const Color(0xFFFF6E00),
                                       borderRadius: BorderRadius.circular(15),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: const Color(0xFF880E4F).withOpacity(0.3),
+                                          color: const Color(0xFFFF6E00).withOpacity(0.3),
                                           blurRadius: 8,
                                         ),
                                       ],
@@ -1751,21 +2108,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                                             ),
                                           ],
                                         ),
-                                        const SizedBox(height: 4),
-                                        Row(
-                                          children: [
-                                            const Icon(Icons.psychology, size: 14, color: AppTheme.primaryGreen),
-                                            const SizedBox(width: 4),
-                                            const Text(
-                                              'AI Identified Location',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: AppTheme.primaryGreen,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
                                       ],
                                     ),
                                   ),
@@ -1781,7 +2123,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                _mlLocationName == _selectedLocation ? (_mlDescription ?? "Analyzing location history...") : "Please move closer or use AI Identification panel.",
+                                _mlLocationName == _selectedLocation ? (_mlDescription ?? "Analyzing location history...") : "Location information loading...",
                                 style: const TextStyle(
                                   fontSize: 14,
                                   color: Colors.black87,
