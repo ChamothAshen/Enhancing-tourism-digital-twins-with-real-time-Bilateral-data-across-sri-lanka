@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <title>Sigiriya 3D Crowd Viewer</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        overflow: hidden;
+        background: transparent;
+        touch-action: none;
+      }
+      #canvas {
+        width: 100%;
+        height: 100vh;
+        display: block;
+      }
+      #loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+        transition: opacity 0.8s ease;
+      }
+      #loading-overlay.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .loader-ring {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        border: 3px solid rgba(255, 255, 255, 0.1);
+        border-top: 3px solid #00e5ff;
+        border-right: 3px solid #00bfa5;
+        animation: spin 1s linear infinite;
+        box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
+      }
+      .loader-text {
+        margin-top: 16px;
+        color: rgba(255, 255, 255, 0.8);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 13px;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+      }
+      .loader-percent {
+        margin-top: 6px;
+        color: #00e5ff;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: 1px;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      #coord-display {
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        background: rgba(0, 0, 0, 0.7);
+        color: #0f0;
+        font-family: monospace;
+        font-size: 11px;
+        padding: 6px 10px;
+        border-radius: 4px;
+        display: none;
+        z-index: 100;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loading-overlay">
+      <div class="loader-ring"></div>
+      <div class="loader-text">Loading Sigiriya</div>
+      <div class="loader-percent" id="load-percent">0%</div>
+    </div>
+    <canvas id="canvas"></canvas>
+    <div id="coord-display"></div>
+
+    <!-- Three.js via global UMD builds (reliable in all WebViews) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
+    <script>
+      // ==========================================
+      // Read parameters from URL
+      // ==========================================
+      var params = new URLSearchParams(window.location.search);
+      var initialModelUrl = params.get("model") || "";
+      var crowdParam = params.get("crowd") || "";
+      console.log("Model URL:", initialModelUrl);
+      console.log("Crowd param:", crowdParam);
+
+      // ==========================================
+      // Scene Setup
+      // ==========================================
+      var scene = new THREE.Scene();
+      scene.background = null;
+
+      var camera = new THREE.PerspectiveCamera(
+        50,
+        window.innerWidth / window.innerHeight,
+        0.01,
+        2000,
+      );
+      camera.position.set(0, 3, 8);
+
+      var renderer = new THREE.WebGLRenderer({
+        canvas: document.getElementById("canvas"),
+        antialias: true,
+        alpha: true,
+      });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setClearColor(0x000000, 0);
+      renderer.outputEncoding = THREE.sRGBEncoding;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.4;
+
+      // Lighting — brighter and more balanced
+      var ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+      scene.add(ambientLight);
+
+      var sunLight = new THREE.DirectionalLight(0xfff4e0, 1.2);
+      sunLight.position.set(8, 12, 6);
+      scene.add(sunLight);
+
+      var fillLight = new THREE.DirectionalLight(0xc0d8ff, 0.5);
+      fillLight.position.set(-5, 4, -4);
+      scene.add(fillLight);
+
+      var rimLight = new THREE.DirectionalLight(0xffffff, 0.3);
+      rimLight.position.set(0, -2, -6);
+      scene.add(rimLight);
+
+      // Hemisphere light for natural sky/ground coloring
+      var hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x3d2817, 0.4);
+      scene.add(hemiLight);
+
+      // Controls
+      var controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.08;
+      controls.autoRotate = false;
+      controls.enableZoom = true;
+      controls.enablePan = true;
+      controls.minDistance = 1;
+      controls.maxDistance = 80;
+
+      // ==========================================
+      // State
+      // ==========================================
+      var modelGroup = null;
+      var originalBBox = null; // bbox in original model space (before transforms)
+      var originalSize = null; // size of original bbox
+      var originalMin = null; // min corner of original bbox
+      var crowdDotsGroup = null;
+      var debugMode = false;
+      var entranceAnimating = false;
+      var entranceProgress = 0;
+      var targetScale = 1;
+      var MODEL_SCALE_FACTOR = 4.5;
+
+      var loader = new THREE.GLTFLoader();
+      var loadingOverlay = document.getElementById("loading-overlay");
+      var loadPercent = document.getElementById("load-percent");
+      var coordDisplay = document.getElementById("coord-display");
+
+      // ==========================================
+      // Load Model
+      // ==========================================
+      function loadModel(url) {
+        if (!url) {
+          console.error("loadModel called with empty URL");
+          return;
+        }
+        console.log("Loading model from:", url);
+
+        loader.load(
+          url,
+          function (gltf) {
+            console.log("GLB parsed successfully");
+            if (modelGroup) {
+              // Remove old pivot group (which contains old modelGroup)
+              if (modelGroup._pivot) {
+                scene.remove(modelGroup._pivot);
+              } else {
+                scene.remove(modelGroup);
+              }
+            }
+
+            modelGroup = gltf.scene;
+
+            // Compute ORIGINAL bounding box BEFORE any transforms
+            // This is critical — dots are placed in this original coordinate space
+            var box = new THREE.Box3().setFromObject(modelGroup);
+            var center = box.getCenter(new THREE.Vector3());
+            var size = box.getSize(new THREE.Vector3());
+            originalBBox = box.clone();
+            originalSize = size.clone();
+            originalMin = box.min.clone();
+            var maxDim = Math.max(size.x, size.y, size.z);
+            targetScale = MODEL_SCALE_FACTOR / maxDim;
+
+            console.log(
+              "Original bbox min:",
+              originalMin.x.toFixed(2),
+              originalMin.y.toFixed(2),
+              originalMin.z.toFixed(2),
+            );
+            console.log(
+              "Original bbox size:",
+              originalSize.x.toFixed(2),
+              originalSize.y.toFixed(2),
+              originalSize.z.toFixed(2),
+            );
+
+            // Center the model at origin, then scale
+            // Shift geometry so center is at origin (in model-local space)
+            modelGroup.position.set(-center.x, -center.y, -center.z);
+
+            // Wrap in a pivot group so scale + centering are clean
+            var pivotGroup = new THREE.Group();
+            pivotGroup.add(modelGroup);
+            pivotGroup.scale.set(0.001, 0.001, 0.001); // start tiny for animation
+            scene.add(pivotGroup);
+
+            // Store pivot ref for entrance animation
+            modelGroup._pivot = pivotGroup;
+
+            // Create crowd dots group as CHILD of modelGroup
+            // Dots positioned in original model coords will transform automatically
+            crowdDotsGroup = new THREE.Group();
+            crowdDotsGroup.name = "crowdDots";
+            modelGroup.add(crowdDotsGroup);
+
+            // Compute where camera should look at final scale
+            var scaledSize = new THREE.Vector3()
+              .copy(size)
+              .multiplyScalar(targetScale);
+            var scaledCenter = new THREE.Vector3(0, 0, 0); // centered at origin
+            var dist = Math.max(scaledSize.x, scaledSize.y, scaledSize.z) * 1.2;
+            camera.position.set(
+              scaledCenter.x + dist * 0.4,
+              scaledCenter.y + dist * 0.5,
+              scaledCenter.z + dist * 0.8,
+            );
+            controls.target.copy(scaledCenter);
+            controls.update();
+
+            // Start entrance animation
+            entranceProgress = 0;
+            entranceAnimating = true;
+
+            // Hide loading overlay with fade
+            loadingOverlay.classList.add("hidden");
+
+            // Notify Flutter
+            try {
+              if (window.flutter_inappwebview) {
+                window.flutter_inappwebview.callHandler(
+                  "onModelLoaded",
+                  JSON.stringify({
+                    bbox: {
+                      min: {
+                        x: originalBBox.min.x,
+                        y: originalBBox.min.y,
+                        z: originalBBox.min.z,
+                      },
+                      max: {
+                        x: originalBBox.max.x,
+                        y: originalBBox.max.y,
+                        z: originalBBox.max.z,
+                      },
+                    },
+                    center: {
+                      x: scaledCenter.x,
+                      y: scaledCenter.y,
+                      z: scaledCenter.z,
+                    },
+                    size: { x: scaledSize.x, y: scaledSize.y, z: scaledSize.z },
+                  }),
+                );
+              }
+            } catch (e) {
+              console.log("flutter_inappwebview not available:", e);
+            }
+
+            console.log(
+              "Model loaded. Size:",
+              scaledSize.x.toFixed(2),
+              scaledSize.y.toFixed(2),
+              scaledSize.z.toFixed(2),
+            );
+
+            // Place crowd dots after a short delay to ensure matrices are updated
+            // Flutter will send the real crowd data via _sendCrowdDataToViewer()
+            // which calls window.updateCrowdDots() — no default fallback needed.
+          },
+          function (xhr) {
+            if (xhr.total > 0) {
+              var pct = ((xhr.loaded / xhr.total) * 100).toFixed(0);
+              loadPercent.textContent = pct + "%";
+              console.log("Loading: " + pct + "%");
+            }
+          },
+          function (error) {
+            console.error("Error loading model:", error);
+            loadPercent.textContent = "Error";
+            loadingOverlay.querySelector(".loader-text").textContent =
+              "Failed to load model";
+            loadingOverlay.querySelector(".loader-ring").style.display = "none";
+          },
+        );
+      }
+
+      // ==========================================
+      // Entrance Animation (smooth scale-up with overshoot)
+      // ==========================================
+      function easeOutBack(t) {
+        var c1 = 1.70158;
+        var c3 = c1 + 1;
+        return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+      }
+
+      function updateEntranceAnimation() {
+        if (!entranceAnimating || !modelGroup || !modelGroup._pivot) return;
+
+        entranceProgress += 0.012; // ~1.2 seconds at 60fps
+        if (entranceProgress >= 1) {
+          entranceProgress = 1;
+          entranceAnimating = false;
+        }
+
+        var easedScale = easeOutBack(entranceProgress) * targetScale;
+        modelGroup._pivot.scale.set(easedScale, easedScale, easedScale);
+      }
+
+      // ==========================================
+      // Default crowd dots (fallback, always works)
+      // ==========================================
+      function placeDefaultCrowdDots() {
+        var defaultData = {
+          zones: [
+            {
+              id: "lions_paw",
+              label: "Lion's Paw Platform",
+              x: 0.5,
+              y: 0.55,
+              z: 0.5,
+              count: 12,
+            },
+          ],
+        };
+        console.log("Placing default crowd dots");
+        updateCrowdDots(defaultData);
+      }
+
+      // ==========================================
+      // Crowd Dot Management
+      // ==========================================
+      var dotMaterialRed = new THREE.MeshBasicMaterial({
+        color: 0x000000,
+      });
+
+      function updateCrowdDots(jsonData) {
+        if (!modelGroup || !crowdDotsGroup || !originalSize) {
+          console.warn("Model not loaded yet, cannot place crowd dots.");
+          return;
+        }
+
+        // Clear existing dots
+        while (crowdDotsGroup.children.length > 0) {
+          crowdDotsGroup.remove(crowdDotsGroup.children[0]);
+        }
+
+        var data;
+        try {
+          data = typeof jsonData === "string" ? JSON.parse(jsonData) : jsonData;
+        } catch (e) {
+          console.error("Invalid JSON for crowd dots:", e);
+          return;
+        }
+
+        // Dot size — very small relative to model
+        var modelSpan = Math.max(originalSize.x, originalSize.z);
+        var DOT_RADIUS = modelSpan * 0.002;
+        if (DOT_RADIUS < 0.005) DOT_RADIUS = 0.005;
+        var dotGeometry = new THREE.SphereGeometry(DOT_RADIUS, 8, 6);
+
+        console.log(
+          "DOT_RADIUS:",
+          DOT_RADIUS.toFixed(4),
+          "for model span:",
+          modelSpan.toFixed(2),
+        );
+
+        // Use the ORIGINAL model-space bbox for placing dots.
+        // Since crowdDotsGroup is a child of modelGroup, positions here
+        // are in original model coordinates — no world transform needed.
+        // The parent hierarchy (pivot scale + modelGroup offset) handles rendering.
+        var zones = data.zones || [];
+        console.log(
+          "Processing " +
+            zones.length +
+            " crowd zones, originalMin=(" +
+            originalMin.x.toFixed(2) +
+            "," +
+            originalMin.y.toFixed(2) +
+            "," +
+            originalMin.z.toFixed(2) +
+            "), originalSize=(" +
+            originalSize.x.toFixed(2) +
+            "," +
+            originalSize.y.toFixed(2) +
+            "," +
+            originalSize.z.toFixed(2) +
+            ")",
+        );
+
+        zones.forEach(function (zone) {
+          var count = zone.count || 0;
+          if (count <= 0) return;
+
+          // Map normalized [0..1] to original model-space position
+          var localX = originalMin.x + zone.x * originalSize.x;
+          var localY = originalMin.y + zone.y * originalSize.y;
+          var localZ = originalMin.z + zone.z * originalSize.z;
+
+          console.log(
+            "Zone " +
+              zone.id +
+              " → modelLocal(" +
+              localX.toFixed(2) +
+              "," +
+              localY.toFixed(2) +
+              "," +
+              localZ.toFixed(2) +
+              ") count=" +
+              count,
+          );
+
+          // Spread radius proportional to original model size
+          var spreadRadius = Math.max(originalSize.x, originalSize.z) * 0.03;
+
+          for (var i = 0; i < count; i++) {
+            var dot = new THREE.Mesh(dotGeometry, dotMaterialRed);
+
+            // Sunflower spiral pattern for even distribution
+            var angle = (i / count) * Math.PI * 2 + i * 2.39996; // golden angle
+            var r = spreadRadius * Math.sqrt((i + 0.5) / count);
+            var offsetX = Math.cos(angle) * r;
+            var offsetZ = Math.sin(angle) * r;
+
+            dot.position.set(localX + offsetX, localY, localZ + offsetZ);
+
+            crowdDotsGroup.add(dot);
+          }
+
+          // Pulsing glow ring under the cluster
+          var ringGeo = new THREE.RingGeometry(
+            spreadRadius * 0.5,
+            spreadRadius * 1.3,
+            32,
+          );
+          var ringMat = new THREE.MeshBasicMaterial({
+            color: 0xff1744,
+            transparent: true,
+            opacity: 0.18,
+            side: THREE.DoubleSide,
+          });
+          var ring = new THREE.Mesh(ringGeo, ringMat);
+          ring.position.set(localX, localY + 0.005, localZ);
+          ring.rotation.x = -Math.PI / 2;
+          ring.userData.isPulse = true;
+          crowdDotsGroup.add(ring);
+
+          // Label sprite
+          var labelCanvas = document.createElement("canvas");
+          labelCanvas.width = 512;
+          labelCanvas.height = 96;
+          var ctx = labelCanvas.getContext("2d");
+
+          // Background pill
+          ctx.fillStyle = "rgba(20,20,20,0.85)";
+          ctx.beginPath();
+          if (ctx.roundRect) {
+            ctx.roundRect(8, 8, 496, 80, 16);
+          } else {
+            ctx.rect(8, 8, 496, 80);
+          }
+          ctx.fill();
+
+          // Red accent bar
+          ctx.fillStyle = "#ff1744";
+          ctx.fillRect(8, 8, 6, 80);
+
+          // Text
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "bold 34px -apple-system, Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(zone.label || zone.id, 260, 36);
+
+          // Count badge
+          ctx.fillStyle = "#ff1744";
+          ctx.font = "bold 28px -apple-system, Arial, sans-serif";
+          ctx.fillText(count + " visitors", 260, 68);
+
+          var texture = new THREE.CanvasTexture(labelCanvas);
+          var spriteMaterial = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true,
+            depthTest: false,
+          });
+          var sprite = new THREE.Sprite(spriteMaterial);
+          var labelHeight = Math.max(originalSize.y * 0.06, 0.3);
+          sprite.position.set(localX, localY + labelHeight, localZ);
+          sprite.scale.set(labelHeight * 5, labelHeight * 0.95, 1);
+          crowdDotsGroup.add(sprite);
+        });
+
+        console.log(
+          "Crowd dots updated: " +
+            zones.length +
+            " zones, " +
+            crowdDotsGroup.children.length +
+            " objects total",
+        );
+      }
+
+      // ==========================================
+      // Pulse animation for crowd rings
+      // ==========================================
+      var pulseTime = 0;
+
+      function updatePulse() {
+        pulseTime += 0.03;
+        if (!crowdDotsGroup) return;
+        crowdDotsGroup.children.forEach(function (child) {
+          if (child.userData && child.userData.isPulse) {
+            child.material.opacity = 0.1 + Math.sin(pulseTime * 2) * 0.08;
+            var s = 1 + Math.sin(pulseTime * 1.5) * 0.08;
+            child.scale.set(s, s, s);
+          }
+        });
+      }
+
+      // ==========================================
+      // Debug Mode: Click to read coordinates
+      // ==========================================
+      var raycaster = new THREE.Raycaster();
+      var mouse = new THREE.Vector2();
+
+      function onPointerClick(event) {
+        if (!debugMode || !modelGroup) return;
+
+        var rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        var intersects = raycaster.intersectObject(modelGroup, true);
+
+        if (intersects.length > 0) {
+          var hit = intersects[0].point;
+          modelGroup.updateMatrixWorld(true);
+          var localHit = hit
+            .clone()
+            .applyMatrix4(
+              new THREE.Matrix4().copy(modelGroup.matrixWorld).invert(),
+            );
+          var normX = ((localHit.x - originalMin.x) / originalSize.x).toFixed(
+            4,
+          );
+          var normY = ((localHit.y - originalMin.y) / originalSize.y).toFixed(
+            4,
+          );
+          var normZ = ((localHit.z - originalMin.z) / originalSize.z).toFixed(
+            4,
+          );
+
+          var info =
+            "Normalized: (" + normX + ", " + normY + ", " + normZ + ")";
+          coordDisplay.style.display = "block";
+          coordDisplay.textContent = info;
+          console.log("CLICKED: " + info);
+
+          try {
+            if (window.flutter_inappwebview) {
+              window.flutter_inappwebview.callHandler(
+                "onPointClicked",
+                JSON.stringify({
+                  world: { x: hit.x, y: hit.y, z: hit.z },
+                  normalized: {
+                    x: parseFloat(normX),
+                    y: parseFloat(normY),
+                    z: parseFloat(normZ),
+                  },
+                }),
+              );
+            }
+          } catch (e) {}
+        }
+      }
+
+      renderer.domElement.addEventListener("click", onPointerClick);
+      renderer.domElement.addEventListener("touchend", function (e) {
+        if (!debugMode || e.changedTouches.length === 0) return;
+        var touch = e.changedTouches[0];
+        onPointerClick({ clientX: touch.clientX, clientY: touch.clientY });
+      });
+
+      // ==========================================
+      // API exposed to Flutter
+      // ==========================================
+      // Note: loadModel, updateCrowdDots are already global via function declarations.
+      // Only wrap functions that need aliasing.
+      window.setModelUrl = function (url) {
+        loadModel(url);
+      };
+      window.setDebugMode = function (enabled) {
+        debugMode = enabled;
+        coordDisplay.style.display = enabled ? "block" : "none";
+        if (!enabled) coordDisplay.textContent = "";
+      };
+      window.setAutoRotate = function (enabled, speed) {
+        controls.autoRotate = enabled;
+        controls.autoRotateSpeed = speed || 2.0;
+      };
+
+      // ==========================================
+      // Animation Loop
+      // ==========================================
+      function animate() {
+        requestAnimationFrame(animate);
+        updateEntranceAnimation();
+        updatePulse();
+        controls.update();
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      window.addEventListener("resize", function () {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      // ==========================================
+      // Auto-load model from query parameter
+      // ==========================================
+      if (initialModelUrl) {
+        console.log("Auto-loading model: " + initialModelUrl);
+        loadModel(initialModelUrl);
+      }
+
+      console.log("Crowd viewer initialized.");
+    </script>
+  </body>
+</html>

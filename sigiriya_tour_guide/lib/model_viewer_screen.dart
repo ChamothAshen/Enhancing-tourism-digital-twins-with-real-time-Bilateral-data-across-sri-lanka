@@ -1,7 +1,8 @@
 import 'dart:math';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_3d_controller/flutter_3d_controller.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'dart:async';
 import 'package:sigiriya_tour_guide/services/weather_service.dart';
 import 'package:sigiriya_tour_guide/services/risk_prediction_service.dart';
@@ -23,8 +24,11 @@ class ModelViewerScreen extends StatefulWidget {
 
 class _ModelViewerScreenState extends State<ModelViewerScreen>
     with TickerProviderStateMixin {
-  final Flutter3DController controller = Flutter3DController();
-  String srcGlb = 'assets/test.glb';
+  InAppWebViewController? _webViewController;
+  InAppLocalhostServer? _localhostServer;
+  bool _serverStarted = false;
+  bool _modelLoaded = false;
+  String srcGlb = 'test.glb'; // Relative to assets folder
 
   RainIntensity rainIntensity = RainIntensity.none;
   FogIntensity fogIntensity = FogIntensity.none;
@@ -49,14 +53,43 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
   final WeatherService _weatherService = WeatherService();
   final RiskPredictionService _riskService = RiskPredictionService();
 
+  // Crowd data for zones on the 3D model.
+  // Coordinates are normalized [0..1] relative to the model's bounding box.
+  // You can use debug mode (tap on model) to find exact coordinates for your GLB.
+  final Map<String, Map<String, dynamic>> _crowdZones = {
+    "summit": {
+      "label": "Summit Palace",
+      "x": 0.50,
+      "y": 0.95,
+      "z": 0.50,
+      "count": 8,
+    },
+    "lion's_paw": {
+      "label": "Lion's Paw Platform",
+      "x": 0.4565,
+      "y": 0.5983,
+      "z": 0.2627,
+      "count": 20,
+    },
+  };
+
   @override
   void initState() {
     super.initState();
-    controller.onModelLoaded.addListener(() {
-      debugPrint('model is loaded : ${controller.onModelLoaded.value}');
-    });
+    _startLocalServer();
     _setupAntigravity();
     _startWeatherUpdates();
+  }
+
+  Future<void> _startLocalServer() async {
+    _localhostServer = InAppLocalhostServer(documentRoot: 'assets');
+    await _localhostServer!.start();
+    if (mounted) {
+      setState(() {
+        _serverStarted = true;
+      });
+    }
+    debugPrint('Localhost server started on port ${_localhostServer!.port}');
   }
 
   void _setupAntigravity() {
@@ -182,7 +215,45 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
   void dispose() {
     _antigravityController.dispose();
     _weatherTimer?.cancel();
+    _localhostServer?.close();
     super.dispose();
+  }
+
+  /// Send crowd data to the Three.js scene via JavaScript
+  Future<void> _sendCrowdDataToViewer() async {
+    if (_webViewController == null || !_modelLoaded) return;
+
+    final zones = _crowdZones.entries.map((e) {
+      return <String, dynamic>{
+        "id": e.key,
+        "label": e.value["label"],
+        "x": e.value["x"],
+        "y": e.value["y"],
+        "z": e.value["z"],
+        "count": e.value["count"],
+      };
+    }).toList();
+
+    final jsonData = json.encode({"zones": zones});
+    // Escape single quotes and backslashes for JS string literal
+    final escaped = jsonData.replaceAll('\\', '\\\\').replaceAll("'", "\\'");
+
+    debugPrint('Sending crowd data: $jsonData');
+
+    await _webViewController!.evaluateJavascript(
+      source: "window.updateCrowdDots('$escaped');",
+    );
+    debugPrint('Crowd data sent to viewer: ${zones.length} zones');
+
+    // Retry after a short delay to ensure matrices are ready
+    Future.delayed(const Duration(seconds: 2), () async {
+      if (_webViewController != null && _modelLoaded) {
+        await _webViewController!.evaluateJavascript(
+          source: "window.updateCrowdDots('$escaped');",
+        );
+        debugPrint('Crowd data re-sent (delayed retry)');
+      }
+    });
   }
 
   BoxDecoration _backgroundForPreset() {
@@ -357,28 +428,73 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
         height: double.infinity,
         child: Stack(
           children: [
-            // 3D Model with Antigravity (Bottom of stack, but gestures pass through effects)
+            // 3D Model with Crowd Dots (InAppWebView + Three.js)
             Positioned.fill(
               child: AnimatedBuilder(
                 animation: _antigravityAnimation,
                 builder: (context, child) {
                   return Transform.translate(
                     offset: Offset(0, _antigravityAnimation.value),
-                    child: Flutter3DViewer(
-                      activeGestureInterceptor: true,
-                      progressBarColor: Colors.orange,
-                      enableTouch: true,
-                      onProgress: (p) =>
-                          debugPrint('model loading progress : $p'),
-                      onLoad: (modelAddress) {
-                        debugPrint('model loaded : $modelAddress');
-                        controller.setCameraOrbit(-85, 50, 5);
-                        controller.playAnimation();
-                      },
-                      onError: (e) => debugPrint('model failed to load : $e'),
-                      controller: controller,
-                      src: srcGlb,
-                    ),
+                    child: _serverStarted
+                        ? InAppWebView(
+                            initialUrlRequest: URLRequest(
+                              url: WebUri(
+                                'http://localhost:${_localhostServer!.port}/crowd_viewer.html?model=http://localhost:${_localhostServer!.port}/$srcGlb',
+                              ),
+                            ),
+                            initialSettings: InAppWebViewSettings(
+                              transparentBackground: true,
+                              javaScriptEnabled: true,
+                              allowFileAccessFromFileURLs: true,
+                              allowUniversalAccessFromFileURLs: true,
+                              mediaPlaybackRequiresUserGesture: false,
+                              useHybridComposition: true,
+                            ),
+                            onWebViewCreated: (controller) {
+                              _webViewController = controller;
+
+                              // Handler: model loaded callback from JS
+                              controller.addJavaScriptHandler(
+                                handlerName: 'onModelLoaded',
+                                callback: (args) {
+                                  debugPrint(
+                                    '3D model loaded in WebView: $args',
+                                  );
+                                  setState(() {
+                                    _modelLoaded = true;
+                                  });
+                                  // Send crowd data now that model is ready
+                                  _sendCrowdDataToViewer();
+                                },
+                              );
+
+                              // Handler: debug click coordinates
+                              controller.addJavaScriptHandler(
+                                handlerName: 'onPointClicked',
+                                callback: (args) {
+                                  debugPrint('\n=== TAP COORDINATES ===');
+                                  debugPrint('Raw: $args');
+                                  debugPrint(
+                                    'Copy normalized x/y/z into _crowdZones',
+                                  );
+                                  debugPrint('========================\n');
+                                },
+                              );
+                            },
+                            onLoadStop: (controller, url) async {
+                              debugPrint('WebView loaded: $url');
+                            },
+                            onConsoleMessage: (controller, consoleMessage) {
+                              debugPrint(
+                                'JS Console: ${consoleMessage.message}',
+                              );
+                            },
+                          )
+                        : const Center(
+                            child: CircularProgressIndicator(
+                              color: Colors.teal,
+                            ),
+                          ),
                   );
                 },
               ),
@@ -440,6 +556,9 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
               ignoring: true,
               child: RainOverlay(intensity: rainIntensity),
             ),
+
+            // Crowd dots are now rendered inside the Three.js scene (crowd_viewer.html)
+            // They are attached to the 3D model and move with it during rotation/pan/zoom.
 
             // Weather & Temperature Display (Top Left)
             Positioned(
