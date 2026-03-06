@@ -91,15 +91,10 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Always send "Sigiriya" as location (backend only accepts this).
-      // Enrich the user query with the specific place name for context.
-      final enrichedQuery = _currentLocation != 'Sigiriya'
-          ? 'About the $_currentLocation at Sigiriya: ${query.trim()}'
-          : query.trim();
-
+      // Send the actual current location to get location-specific responses
       final response = await _apiService.sendMessage(
-        location: 'Sigiriya',
-        userQuery: enrichedQuery,
+        location: _currentLocation,
+        userQuery: query.trim(),
       );
 
       // Remove loading indicator
