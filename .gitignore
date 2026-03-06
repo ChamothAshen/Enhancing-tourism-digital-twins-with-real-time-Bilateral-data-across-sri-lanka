@@ -1,1 +1,123 @@
 sigiriya_tour_guide/lib/config/api_keys.dart
+# ===========================
+# Python / Machine Learning
+# ===========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+
+# YOLO / ML Model files (large files)
+*.pt
+runs/
+
+# Test images (can be re-downloaded)
+Croud/TourismDigitalCC/*.jpg
+Croud/TourismDigitalCC/*.png
+Croud/TourismDigitalCC/detection_results/*.jpg
+Croud/TourismDigitalCC/detection_results/*.png
+
+# ===========================
+# Flutter / Dart
+# ===========================
+# This folder contains only build artifacts (no source code)
+sigiriya_tour_guide/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+pubspec.lock
+
+# Build outputs
+**/build/
+
+# ===========================
+# Android
+# ===========================
+**/android/**/local.properties
+**/android/.gradle/
+**/android/.kotlin/
+**/android/**/GeneratedPluginRegistrant.java
+*.apk
+*.aab
+*.jks
+*.keystore
+!debug.keystore
+
+# Android Studio
+.idea/
+*.iml
+.gradle/
+local.properties
+
+# ===========================
+# iOS
+# ===========================
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/App.framework
+**/ios/Flutter/engine/
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.*
+*.xcworkspace
+xcuserdata/
+DerivedData/
+Podfile.lock
+
+# ===========================
+# macOS / Linux / Windows
+# ===========================
+**/macos/Flutter/ephemeral/
+**/macos/Flutter/GeneratedPluginRegistrant.swift
+**/linux/flutter/ephemeral/
+**/windows/flutter/ephemeral/
+
+# ===========================
+# IDE / Editor
+# ===========================
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.settings/
+.classpath
+
+# ===========================
+# OS Generated
+# ===========================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ===========================
+# Miscellaneous
+# ===========================
+*.log
+*.tmp
+*.temp
+*.bak
+*.cache
