@@ -1,11 +1,10 @@
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:sigiriya_tour_guide/theme/app_theme.dart';
 import 'package:sigiriya_tour_guide/widgets/chat_bottom_sheet.dart';
+import 'package:sigiriya_tour_guide/services/location_api_service.dart';
 import 'dart:math' as math;
 import 'package:flutter_tts/flutter_tts.dart';
 
@@ -30,8 +29,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   String? _mlDescription;
   bool _isMLProcessing = false;
   final FlutterTts _flutterTts = FlutterTts();
-  // Use your computer's IP address (10.60.14.73) so your phone can reach the server
-  final String _apiUrl = "http://10.60.14.73:8000/predict";
+  
+  // Location API Service - Railway deployed backend
+  final LocationApiService _locationApi = LocationApiService();
+  SuggestNearestResponse? _nearbyData;
+  bool _showNearbyPanel = false;
 
   // Sigiriya Rock coordinates
   static const LatLng sigiriyaRock = LatLng(7.9570, 80.7603);
@@ -140,7 +142,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       _fitAllMarkers();
       
       // Feedback for research
-      print("🔍 ML Research Mode: Connected to $_apiUrl");
+      print("🔍 Location API: Connected to Railway backend");
     });
   }
 
@@ -168,6 +170,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   void dispose() {
     _pulseController.dispose();
     _flutterTts.stop();
+    _locationApi.dispose();
     super.dispose();
   }
 
@@ -311,7 +314,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       _currentPosition = position;
       _isLoading = false;
       _checkArrival(position);
-      _predictLocationWithML(position); // Call the Python ML model
+      _predictLocationWithML(position); // Call the Railway deployed ML API
     });
   }
 
@@ -323,40 +326,296 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     });
 
     try {
-      final response = await http.post(
-        Uri.parse(_apiUrl),
-        headers: {"Content-Type": "application/json"},
-        body: json.encode({
-          "lat": pos.latitude,
-          "lon": pos.longitude,
-        }),
-      ).timeout(const Duration(seconds: 20));
+      // Call both APIs in parallel for better performance
+      final results = await Future.wait([
+        _locationApi.predictLocation(
+          latitude: pos.latitude,
+          longitude: pos.longitude,
+        ),
+        _locationApi.suggestNearest(
+          latitude: pos.latitude,
+          longitude: pos.longitude,
+        ),
+      ]);
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final newLocation = data['location_name'];
-        final newDesc = data['description'];
+      final predictResponse = results[0] as PredictResponse;
+      final nearbyResponse = results[1] as SuggestNearestResponse;
 
-        if (_mlLocationName != newLocation) {
-          _speak("$newLocation. $newDesc");
-        }
+      final newLocation = predictResponse.locationName;
+      final newDesc = predictResponse.description;
 
-        setState(() {
-          _mlLocationName = newLocation;
-          _mlDescription = newDesc;
-          _isMLProcessing = false;
-        });
-      } else {
-        setState(() => _isMLProcessing = false);
+      // Speak location name if changed
+      if (_mlLocationName != newLocation) {
+        _speak("You are at $newLocation. $newDesc");
       }
+
+      setState(() {
+        _mlLocationName = newLocation;
+        _mlDescription = newDesc;
+        _nearbyData = nearbyResponse;
+        _showNearbyPanel = true;
+        _isMLProcessing = false;
+      });
     } catch (e) {
       // API might be offline
       setState(() {
         _isMLProcessing = false;
-        _errorMessage = "ML API Connection Error: $e";
       });
-      print("ML API Error: $e");
+      print("Location API Error: $e");
     }
+  }
+
+  void _showNearbyLocationsSheet() {
+    if (_nearbyData == null) return;
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _buildNearbyLocationsSheet(),
+    );
+  }
+
+  Widget _buildNearbyLocationsSheet() {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.3,
+      maxChildSize: 0.9,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+          ),
+          child: Column(
+            children: [
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Header
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [AppTheme.primaryGreen, Color(0xFF2E7D32)],
+                        ),
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: const Icon(Icons.explore, color: Colors.white, size: 24),
+                    ),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Nearby Attractions',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.darkStone,
+                            ),
+                          ),
+                          Text(
+                            '${_nearbyData!.nearbyLocations.length} places to explore',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              // Nearby locations list
+              Expanded(
+                child: ListView.builder(
+                  controller: scrollController,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  itemCount: _nearbyData!.nearbyLocations.length,
+                  itemBuilder: (context, index) {
+                    final nearby = _nearbyData!.nearbyLocations[index];
+                    final isFirst = index == 0;
+                    
+                    return _buildNearbyLocationCard(
+                      nearby,
+                      isNearest: isFirst,
+                      index: index,
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildNearbyLocationCard(NearbyLocation nearby, {bool isNearest = false, int index = 0}) {
+    final attraction = _attractions[nearby.locationName];
+    final IconData iconData = attraction != null 
+        ? attraction['icon'] as IconData 
+        : Icons.place;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isNearest ? AppTheme.primaryGreen.withOpacity(0.08) : Colors.grey[50],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isNearest ? AppTheme.primaryGreen.withOpacity(0.3) : Colors.grey[200]!,
+          width: isNearest ? 2 : 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            Navigator.pop(context);
+            if (attraction != null) {
+              final pos = attraction['position'] as LatLng;
+              _mapController.move(pos, 17.5);
+              setState(() {
+                _selectedLocation = nearby.locationName;
+              });
+              // Open chat for this location
+              ChatBottomSheet.show(
+                context,
+                nearby.locationName,
+                latitude: pos.latitude,
+                longitude: pos.longitude,
+              );
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Icon container
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isNearest ? AppTheme.primaryGreen : const Color(0xFF880E4F),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (isNearest ? AppTheme.primaryGreen : const Color(0xFF880E4F))
+                            .withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Icon(iconData, color: Colors.white, size: 22),
+                ),
+                const SizedBox(width: 14),
+                // Location info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          if (isNearest)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryGreen,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                'NEAREST',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          Expanded(
+                            child: Text(
+                              nearby.locationName,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: isNearest ? FontWeight.bold : FontWeight.w600,
+                                color: AppTheme.darkStone,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.directions_walk,
+                            size: 14,
+                            color: isNearest ? AppTheme.primaryGreen : Colors.grey[600],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            nearby.distanceMeters < 1000
+                                ? '${nearby.distanceMeters.toStringAsFixed(0)} meters'
+                                : '${nearby.distanceKm.toStringAsFixed(2)} km',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isNearest ? AppTheme.primaryGreen : Colors.grey[600],
+                              fontWeight: isNearest ? FontWeight.w600 : FontWeight.normal,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Icon(
+                            Icons.timer_outlined,
+                            size: 14,
+                            color: Colors.grey[500],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '~${(nearby.distanceMeters / 80).ceil()} min walk',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Arrow
+                Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: Colors.grey[400],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
 
@@ -861,83 +1120,219 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                   ),
                 ),
 
-                // ML Prediction Panel (Bottom Floating Card)
-                if (_mlLocationName != null)
+                // Tourist-Friendly Location Panel (Bottom Floating Card)
+                if (_mlLocationName != null && _showNearbyPanel)
                   Positioned(
                     bottom: 20,
-                    left: 20,
-                    right: 20,
+                    left: 16,
+                    right: 16,
                     child: Container(
-                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.95),
-                        borderRadius: BorderRadius.circular(20),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 15,
-                            offset: const Offset(0, 5),
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
                           ),
                         ],
-                        border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3), width: 1.5),
                       ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryGreen.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Icon(Icons.auto_awesome, color: AppTheme.primaryGreen, size: 20),
+                          // Current location header
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  AppTheme.primaryGreen,
+                                  AppTheme.primaryGreen.withOpacity(0.85),
+                                ],
                               ),
-                              const SizedBox(width: 10),
-                              const Text(
-                                'AI LOCATION IDENTIFIED',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppTheme.primaryGreen,
-                                  letterSpacing: 1.2,
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(Icons.location_on, color: Colors.white, size: 24),
                                 ),
-                              ),
-                              const Spacer(),
-                              if (_isMLProcessing)
-                                const SizedBox(
-                                  width: 15,
-                                  height: 15,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryGreen),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'YOUR CURRENT LOCATION',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white70,
+                                          letterSpacing: 1.5,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _mlLocationName!,
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              GestureDetector(
-                                onTap: () => setState(() => _mlLocationName = null),
-                                child: const Icon(Icons.close, size: 18, color: Colors.grey),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            _mlLocationName!,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF2E7D32),
+                                if (_isMLProcessing)
+                                  const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                else
+                                  GestureDetector(
+                                    onTap: () => setState(() => _showNearbyPanel = false),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.close, color: Colors.white, size: 18),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _mlDescription ?? "",
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[700],
-                              height: 1.4,
+                          // Description
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+                            child: Text(
+                              _mlDescription ?? "",
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey[700],
+                                height: 1.5,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
                           ),
+                          // Nearest location quick view
+                          if (_nearbyData != null) ...[
+                            Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 16),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFF8E1),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Icon(Icons.near_me, color: Colors.white, size: 18),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'NEAREST ATTRACTION',
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.amber,
+                                            letterSpacing: 1,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          _nearbyData!.nearestLocation.name,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppTheme.darkStone,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.directions_walk, size: 14, color: Colors.amber),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          _nearbyData!.nearestLocation.distanceText,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.amber,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // View all nearby button
+                            Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: _showNearbyLocationsSheet,
+                                  icon: const Icon(Icons.explore, size: 20),
+                                  label: Text(
+                                    'Explore ${_nearbyData!.nearbyLocations.length} Nearby Places',
+                                    style: const TextStyle(fontWeight: FontWeight.w600),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF880E4F),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    elevation: 2,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ] else
+                            const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -1259,8 +1654,71 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                     ),
                   ),
 
+                // Show nearby panel button (when panel is hidden)
+                if (!_showNearbyPanel && _mlLocationName != null && _selectedLocation == null)
+                  Positioned(
+                    bottom: 20,
+                    left: 16,
+                    right: 16,
+                    child: GestureDetector(
+                      onTap: () => setState(() => _showNearbyPanel = true),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [AppTheme.primaryGreen, AppTheme.primaryGreen.withOpacity(0.9)],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.primaryGreen.withOpacity(0.4),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.location_on, color: Colors.white, size: 20),
+                            const SizedBox(width: 10),
+                            Text(
+                              _mlLocationName!,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.expand_less, color: Colors.white, size: 16),
+                                  Text(
+                                    'Tap to expand',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
                 // Places count badge
-                if (_selectedLocation == null)
+                if (_selectedLocation == null && !_showNearbyPanel && _mlLocationName == null)
                   Positioned(
                     bottom: 20,
                     right: 20,
