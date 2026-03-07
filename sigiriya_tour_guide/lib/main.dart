@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'model_viewer_screen.dart';
+import 'screens/manager_dashboard_screen.dart';
 
 // ===== TESTING MODE =====
 // Set this to true to use mock location for testing
@@ -111,14 +112,26 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_selectedIndex]),
-        actions: _selectedIndex == 1
-            ? [
-                IconButton(
-                  icon: const Icon(Icons.info_outline),
-                  onPressed: _showModelInfo,
+        actions: [
+          // Manager Dashboard Button
+          IconButton(
+            icon: const Icon(Icons.analytics),
+            tooltip: 'Manager Dashboard',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ManagerDashboardScreen(),
                 ),
-              ]
-            : null,
+              );
+            },
+          ),
+          if (_selectedIndex == 1)
+            IconButton(
+              icon: const Icon(Icons.info_outline),
+              onPressed: _showModelInfo,
+            ),
+        ],
       ),
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(

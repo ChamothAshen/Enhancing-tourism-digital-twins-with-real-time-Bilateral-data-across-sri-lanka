@@ -70,6 +70,7 @@ flutter:
     - assets/Duck.glb
     - assets/viewer.html
     - assets/crowd_viewer.html
+    - assets/sigiriya_arrival_categorize.csv
     - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see
