@@ -5,6 +5,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'model_viewer_screen.dart';
 import 'screens/manager_dashboard_screen.dart';
+import 'screens/sentiment_analysis_screen.dart';
 
 // ===== TESTING MODE =====
 // Set this to true to use mock location for testing
@@ -113,6 +114,19 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       appBar: AppBar(
         title: Text(_titles[_selectedIndex]),
         actions: [
+          // Visitor Feedback Button
+          IconButton(
+            icon: const Icon(Icons.reviews),
+            tooltip: 'Visitor Feedback',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SentimentAnalysisScreen(),
+                ),
+              );
+            },
+          ),
           // Manager Dashboard Button
           IconButton(
             icon: const Icon(Icons.analytics),

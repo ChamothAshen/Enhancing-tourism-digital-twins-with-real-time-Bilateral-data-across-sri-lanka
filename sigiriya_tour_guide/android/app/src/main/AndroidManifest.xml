@@ -34,6 +34,11 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyCzM6Ys4vA9VKeHwvg7rG8-0MQmcLtj35Q" />
         
+        <!-- Disable Impeller to fix EGL context conflicts with WebView/Maps -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false" />
+        
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
