@@ -58,6 +58,22 @@ class _ChatBottomSheetState extends State<ChatBottomSheet>
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
+
+  /// Maps location names to their image asset filenames.
+  /// Add the corresponding image file in assets/images/ for each location.
+  static const Map<String, String> _locationImages = {
+    "Sigiriya Entrance": "sigiriya_entrance.png",
+    "Bridge over Moat": "bridge_over_moat.png",
+    "Water Garden": "water_garden.png",
+    "Water Fountains": "water_fountains.png",
+    "Summer Palace": "summer_palace.png",
+    "Caves with Inscriptions": "caves_with_inscriptions.png",
+    "Lion's Paw": "lions_paw_historical.png",
+    "Main Palace": "main_palace.png",
+    "Boulder Gardens": "boulder_gardens.png",
+    "Mirror Wall": "mirror_wall.png",
+    "Sigiriya Museum": "sigiriya_museum.png",
+  };
   late AnimationController _animationController;
 
   @override
@@ -112,7 +128,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet>
         }
 
         return Container(
-          height: screenHeight * 0.75,
+          height: screenHeight * 0.9,
           decoration: const BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -128,6 +144,10 @@ class _ChatBottomSheetState extends State<ChatBottomSheet>
             children: [
               // Header
               _buildHeader(context, chatProvider),
+
+              // Historical image banner for the location
+              if (_locationImages.containsKey(widget.locationName))
+                _buildLocationImage(),
               
               // Chat messages
               Expanded(
@@ -248,6 +268,68 @@ class _ChatBottomSheetState extends State<ChatBottomSheet>
                 tooltip: 'Close',
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLocationImage() {
+    final imageFile = _locationImages[widget.locationName];
+    if (imageFile == null) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      height: 180,
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            'assets/images/$imageFile',
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                color: Colors.grey[200],
+                child: const Center(
+                  child: Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
+                ),
+              );
+            },
+          ),
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.7),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+              child: Text(
+                '${widget.locationName} — Historical View',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ),
         ],
       ),
