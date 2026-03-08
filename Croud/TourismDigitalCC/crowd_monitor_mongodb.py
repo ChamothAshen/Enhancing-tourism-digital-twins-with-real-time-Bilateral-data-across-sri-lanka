@@ -38,7 +38,7 @@ DATABASE_NAME = "sigiriya_tourism"
 COLLECTION_NAME = "crowd_counts"
 
 # Auto-capture Configuration
-AUTO_CAPTURE_INTERVAL = 120  # seconds (2 minutes)
+AUTO_CAPTURE_INTERVAL = 30  # seconds (30 seconds)
 ENABLE_AUTO_CAPTURE = True
 
 # Camera Configuration
@@ -97,7 +97,14 @@ def init_mongodb():
     global mongo_client, db_collection, stats
     
     try:
-        mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+        mongo_client = MongoClient(
+            MONGO_URI, 
+            serverSelectionTimeoutMS=10000,
+            connectTimeoutMS=10000,
+            socketTimeoutMS=10000,
+            tls=True,
+            tlsAllowInvalidCertificates=False
+        )
         # Test the connection
         mongo_client.admin.command('ping')
         
@@ -113,6 +120,11 @@ def init_mongodb():
         
     except ConnectionFailure as e:
         print(f"✗ MongoDB connection failed: {e}")
+        print("  Possible fixes:")
+        print("  1. Whitelist your IP in MongoDB Atlas: Network Access → Add IP Address")
+        print("  2. For testing, allow all IPs: 0.0.0.0/0")
+        print("  3. Check if firewall is blocking port 27017")
+        print("  4. Verify your credentials are correct")
         stats["mongodb_connected"] = False
         return False
     except Exception as e:
@@ -122,7 +134,7 @@ def init_mongodb():
 
 
 def save_to_mongodb(crowd_count, image_base64=None):
-    """Save crowd count to MongoDB"""
+    """Update single document with latest crowd count (upsert - update or insert)"""
     global stats
     
     if db_collection is None:
@@ -133,30 +145,36 @@ def save_to_mongodb(crowd_count, image_base64=None):
     try:
         timestamp = datetime.now()
         
-        document = {
-            "timestamp": timestamp,
-            "date": timestamp.strftime("%Y-%m-%d"),
-            "time": timestamp.strftime("%H:%M:%S"),
-            "hour": timestamp.hour,
-            "day_of_week": timestamp.strftime("%A"),
-            "crowd_count": crowd_count,
-            "location_id": LOCATION_ID,
-            "location_name": LOCATION_NAME,
-            "capture_type": "auto",
-            "confidence_threshold": CONFIDENCE_THRESHOLD
-        }
-        
-        # Optionally store image (as base64) - can be large, enable if needed
-        # if image_base64:
-        #     document["image"] = image_base64
-        
-        result = db_collection.insert_one(document)
+        # Use update_one with upsert to maintain single document per location
+        result = db_collection.update_one(
+            {"location_id": LOCATION_ID},  # Find by location_id
+            {
+                "$set": {
+                    "timestamp": timestamp,
+                    "date": timestamp.strftime("%Y-%m-%d"),
+                    "time": timestamp.strftime("%H:%M:%S"),
+                    "hour": timestamp.hour,
+                    "day_of_week": timestamp.strftime("%A"),
+                    "crowd_count": crowd_count,
+                    "location_name": LOCATION_NAME,
+                    "confidence_threshold": CONFIDENCE_THRESHOLD,
+                    "last_updated": timestamp
+                },
+                "$inc": {"update_count": 1},  # Track how many updates
+                "$setOnInsert": {
+                    "location_id": LOCATION_ID,
+                    "created_at": timestamp
+                }
+            },
+            upsert=True  # Create if doesn't exist, update if exists
+        )
         
         stats["total_captures"] += 1
         stats["last_crowd_count"] = crowd_count
         stats["last_capture_time"] = timestamp.strftime("%Y-%m-%d %H:%M:%S")
         
-        print(f"✓ Saved to MongoDB: Count={crowd_count}, Time={timestamp.strftime('%H:%M:%S')}, ID={result.inserted_id}")
+        action = "Updated" if result.matched_count > 0 else "Created"
+        print(f"✓ {action} MongoDB: Count={crowd_count}, Time={timestamp.strftime('%H:%M:%S')}")
         return True
         
     except Exception as e:
@@ -166,23 +184,22 @@ def save_to_mongodb(crowd_count, image_base64=None):
 
 
 def get_recent_counts(limit=10):
-    """Get recent crowd counts from MongoDB"""
+    """Get current crowd count from MongoDB (single document per location)"""
     if db_collection is None:
         return []
     
     try:
-        results = db_collection.find(
-            {"location_id": LOCATION_ID}
-        ).sort("timestamp", -1).limit(limit)
+        # Get the single document for this location
+        doc = db_collection.find_one({"location_id": LOCATION_ID})
         
-        records = []
-        for doc in results:
-            records.append({
+        if doc:
+            return [{
                 "timestamp": doc["timestamp"].strftime("%Y-%m-%d %H:%M:%S"),
                 "crowd_count": doc["crowd_count"],
-                "time": doc.get("time", "")
-            })
-        return records
+                "time": doc.get("time", ""),
+                "update_count": doc.get("update_count", 1)
+            }]
+        return []
         
     except Exception as e:
         print(f"Error fetching records: {e}")
