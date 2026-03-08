@@ -62,17 +62,17 @@ class _ChatBottomSheetState extends State<ChatBottomSheet>
   /// Maps location names to their image asset filenames.
   /// Add the corresponding image file in assets/images/ for each location.
   static const Map<String, String> _locationImages = {
-    "Sigiriya Entrance": "sigiriya_entrance.png",
-    "Bridge over Moat": "bridge_over_moat.png",
-    "Water Garden": "water_garden.png",
-    "Water Fountains": "water_fountains.png",
-    "Summer Palace": "summer_palace.png",
-    "Caves with Inscriptions": "caves_with_inscriptions.png",
-    "Lion's Paw": "lions_paw_historical.png",
-    "Main Palace": "main_palace.png",
-    "Boulder Gardens": "boulder_gardens.png",
-    "Mirror Wall": "mirror_wall.png",
-    "Sigiriya Museum": "sigiriya_museum.png",
+    "Sigiriya Entrance": "sigiriya_entrance.jpg",
+    "Bridge over Moat": "bridge_over_moat.jpg",
+    "Water Garden": "water_garden.jpg",
+    "Water Fountains": "water_fountains.jpg",
+    "Summer Palace": "summer_palace.jpg",
+    "Caves with Inscriptions": "caves_with_inscriptions.jpg",
+    "Lion's Paw": "lions_paw_historical.jpg",
+    "Main Palace": "main_palace.jpg",
+    "Boulder Gardens": "boulder_gardens.jpg",
+    "Mirror Wall": "mirror_wall.jpg",
+    "Sigiriya Museum": "sigiriya_museum.jpg",
   };
   late AnimationController _animationController;
 
@@ -296,6 +296,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet>
           Image.asset(
             'assets/images/$imageFile',
             fit: BoxFit.cover,
+            cacheWidth: 800,
             errorBuilder: (context, error, stackTrace) {
               return Container(
                 color: Colors.grey[200],

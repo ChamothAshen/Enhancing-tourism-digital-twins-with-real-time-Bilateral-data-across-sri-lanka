@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 import 'package:sigiriya_tour_guide/theme/app_theme.dart';
 import 'package:sigiriya_tour_guide/widgets/chat_bottom_sheet.dart';
 import 'package:sigiriya_tour_guide/services/location_api_service.dart';
@@ -36,6 +38,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   final LocationApiService _locationApi = LocationApiService();
   SuggestNearestResponse? _nearbyData;
   bool _showNearbyPanel = false;
+
+  // Navigation route state
+  LatLng? _navigationTarget;
+  String? _navigationTargetName;
+  List<LatLng> _navigationRoutePoints = [];
+  bool _isNavigating = false;
+  List<NavigationStep> _navigationSteps = [];
+  int _currentNavigationStepIndex = 0;
 
   // Sigiriya Rock coordinates
   static const LatLng sigiriyaRock = LatLng(7.9570, 80.7603);
@@ -746,18 +756,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           onTap: () {
             Navigator.pop(context);
             if (attraction != null) {
-              final pos = attraction['position'] as LatLng;
-              _mapController.move(pos, 17.5);
-              setState(() {
-                _selectedLocation = nearby.locationName;
-              });
-              // Open chat for this location
-              ChatBottomSheet.show(
-                context,
-                nearby.locationName,
-                latitude: pos.latitude,
-                longitude: pos.longitude,
-              );
+              _startNavigationTo(nearby.locationName);
             }
           },
           child: Padding(
@@ -937,6 +936,358 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
 
     return earthRadius * c;
+  }
+
+  String _formatDistance(double meters) {
+    if (meters < 1000) {
+      return '${meters.toStringAsFixed(0)} m';
+    }
+    return '${(meters / 1000).toStringAsFixed(2)} km';
+  }
+
+  /// Calculates compass bearing from one point to another (in degrees, 0-360).
+  double _calculateBearing(LatLng from, LatLng to) {
+    final lat1 = from.latitude * math.pi / 180;
+    final lat2 = to.latitude * math.pi / 180;
+    final dLon = (to.longitude - from.longitude) * math.pi / 180;
+    
+    final y = math.sin(dLon) * math.cos(lat2);
+    final x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dLon);
+    
+    var bearing = math.atan2(y, x) * 180 / math.pi;
+    return (bearing + 360) % 360;
+  }
+
+  /// Gets turn direction based on bearing change.
+  String _getTurnDirection(double bearingChange) {
+    // Normalize bearing change to -180 to 180
+    if (bearingChange > 180) bearingChange -= 360;
+    if (bearingChange < -180) bearingChange += 360;
+    
+    if (bearingChange.abs() < 20) return 'straight';
+    if (bearingChange >= 20 && bearingChange < 60) return 'slight right';
+    if (bearingChange >= 60 && bearingChange < 120) return 'right';
+    if (bearingChange >= 120) return 'sharp right';
+    if (bearingChange <= -20 && bearingChange > -60) return 'slight left';
+    if (bearingChange <= -60 && bearingChange > -120) return 'left';
+    if (bearingChange <= -120) return 'sharp left';
+    return 'straight';
+  }
+
+  /// Gets compass direction name from bearing.
+  String _getCompassDirection(double bearing) {
+    if (bearing >= 337.5 || bearing < 22.5) return 'north';
+    if (bearing >= 22.5 && bearing < 67.5) return 'northeast';
+    if (bearing >= 67.5 && bearing < 112.5) return 'east';
+    if (bearing >= 112.5 && bearing < 157.5) return 'southeast';
+    if (bearing >= 157.5 && bearing < 202.5) return 'south';
+    if (bearing >= 202.5 && bearing < 247.5) return 'southwest';
+    if (bearing >= 247.5 && bearing < 292.5) return 'west';
+    if (bearing >= 292.5 && bearing < 337.5) return 'northwest';
+    return 'north';
+  }
+
+  /// Finds the most direct and practical path from current position to target.
+  /// Prioritizes shortest route for efficient navigation.
+  List<LatLng> _findOnSitePath(LatLng from, LatLng to, String targetName) {
+    // Calculate direct distance
+    final directDistance = _calculateDistance(from, to);
+    
+    // For short distances (under 200m), always use direct path
+    if (directDistance < 200) {
+      return [from, to];
+    }
+    
+    // For medium distances, check if any waypoint would create a significantly shorter path
+    List<LatLng> bestPath = [from, to];
+    double bestDistance = directDistance;
+    
+    // Only consider waypoints if they create a shorter total path
+    for (final entry in _attractions.entries) {
+      final waypoint = entry.value['position'] as LatLng;
+      
+      // Skip if waypoint is the destination
+      if (entry.key == targetName) continue;
+      
+      final distToWaypoint = _calculateDistance(from, waypoint);
+      final distFromWaypoint = _calculateDistance(waypoint, to);
+      final totalViaWaypoint = distToWaypoint + distFromWaypoint;
+      
+      // Only use waypoint if it reduces total distance by at least 50m
+      if (totalViaWaypoint < bestDistance - 50) {
+        bestPath = [from, waypoint, to];
+        bestDistance = totalViaWaypoint;
+      }
+    }
+    
+    // Remove duplicate consecutive points
+    List<LatLng> cleanPath = [bestPath[0]];
+    for (int i = 1; i < bestPath.length; i++) {
+      if (_calculateDistance(bestPath[i], cleanPath.last) > 5) {
+        cleanPath.add(bestPath[i]);
+      }
+    }
+    
+    return cleanPath;
+  }
+
+  /// Generates turn-by-turn navigation steps from a path.
+  /// Optimized for short, direct paths typical of tourist sites.
+  List<NavigationStep> _generateNavigationSteps(List<LatLng> path, String destinationName) {
+    List<NavigationStep> steps = [];
+    
+    if (path.length < 2) {
+      steps.add(NavigationStep(
+        instruction: 'Head towards $destinationName',
+        distance: 0,
+        maneuverType: 'depart',
+      ));
+      return steps;
+    }
+    
+    // For direct path (2 points), create simple instructions
+    if (path.length == 2) {
+      final bearing = _calculateBearing(path[0], path[1]);
+      final compassDir = _getCompassDirection(bearing);
+      final distance = _calculateDistance(path[0], path[1]);
+      
+      steps.add(NavigationStep(
+        instruction: 'Head $compassDir towards $destinationName',
+        distance: distance,
+        maneuverType: 'depart',
+        modifier: compassDir,
+      ));
+      
+      steps.add(NavigationStep(
+        instruction: 'You have arrived at $destinationName',
+        distance: 0,
+        maneuverType: 'arrive',
+      ));
+      
+      return steps;
+    }
+    
+    // For multi-point path, create detailed turn instructions
+    // First step: Start walking
+    final firstBearing = _calculateBearing(path[0], path[1]);
+    final compassDir = _getCompassDirection(firstBearing);
+    final firstDist = _calculateDistance(path[0], path[1]);
+    
+    // Find if first waypoint is a known attraction
+    String firstWaypointName = '';
+    for (final entry in _attractions.entries) {
+      final pos = entry.value['position'] as LatLng;
+      if (_calculateDistance(path[1], pos) < 30) {
+        firstWaypointName = entry.key;
+        break;
+      }
+    }
+    
+    if (firstWaypointName.isNotEmpty) {
+      steps.add(NavigationStep(
+        instruction: 'Head $compassDir towards $firstWaypointName',
+        distance: firstDist,
+        maneuverType: 'depart',
+        modifier: compassDir,
+      ));
+    } else {
+      steps.add(NavigationStep(
+        instruction: 'Head $compassDir',
+        distance: firstDist,
+        maneuverType: 'depart',
+        modifier: compassDir,
+      ));
+    }
+    
+    // Intermediate steps with turn instructions
+    double previousBearing = firstBearing;
+    
+    for (int i = 1; i < path.length - 1; i++) {
+      final currentBearing = _calculateBearing(path[i], path[i + 1]);
+      final bearingChange = currentBearing - previousBearing;
+      final turnDirection = _getTurnDirection(bearingChange);
+      final distance = _calculateDistance(path[i], path[i + 1]);
+      
+      // Find if this waypoint is a known attraction
+      String waypointName = '';
+      for (final entry in _attractions.entries) {
+        final pos = entry.value['position'] as LatLng;
+        if (_calculateDistance(path[i], pos) < 30) {
+          waypointName = entry.key;
+          break;
+        }
+      }
+      
+      String instruction;
+      String maneuverType;
+      
+      if (turnDirection == 'straight') {
+        if (waypointName.isNotEmpty) {
+          instruction = 'Continue past $waypointName towards $destinationName';
+        } else {
+          instruction = 'Continue straight towards $destinationName';
+        }
+        maneuverType = 'continue';
+      } else {
+        if (waypointName.isNotEmpty) {
+          instruction = 'At $waypointName, turn $turnDirection';
+        } else {
+          instruction = 'Turn $turnDirection';
+        }
+        maneuverType = 'turn';
+      }
+      
+      steps.add(NavigationStep(
+        instruction: instruction,
+        distance: distance,
+        maneuverType: maneuverType,
+        modifier: turnDirection.contains('left') ? 'left' : (turnDirection.contains('right') ? 'right' : 'straight'),
+      ));
+      
+      previousBearing = currentBearing;
+    }
+    
+    // Arrival step
+    steps.add(NavigationStep(
+      instruction: 'You have arrived at $destinationName',
+      distance: 0,
+      maneuverType: 'arrive',
+    ));
+    
+    return steps;
+  }
+
+  /// Starts navigation from user's current position to the selected location.
+  /// Uses custom on-site routing through known waypoints for accurate guidance.
+  Future<void> _startNavigationTo(String locationName) async {
+    final attraction = _attractions[locationName];
+    if (attraction == null || _currentPosition == null) return;
+
+    final target = attraction['position'] as LatLng;
+    
+    // Calculate on-site path (prioritizing shortest route)
+    final path = _findOnSitePath(_currentPosition!, target, locationName);
+    final steps = _generateNavigationSteps(path, locationName);
+
+    // Debug: Log path info
+    print('Navigation to $locationName: ${path.length} waypoints, direct distance: ${_calculateDistance(_currentPosition!, target).toStringAsFixed(1)}m');
+
+    setState(() {
+      _isNavigating = true;
+      _navigationTarget = target;
+      _navigationTargetName = locationName;
+      _navigationRoutePoints = path;
+      _navigationSteps = steps;
+      _currentNavigationStepIndex = 0;
+      _showNearbyPanel = false;
+      _selectedLocation = null;
+    });
+
+    _fitNavigationBounds(_currentPosition!, target);
+    
+    // Speak first instruction
+    if (steps.isNotEmpty) {
+      _speak(steps[0].instruction);
+    }
+  }
+
+  String _buildInstruction(String type, String modifier, String streetName) {
+    final street = streetName.isNotEmpty ? ' onto $streetName' : '';
+    
+    switch (type) {
+      case 'depart':
+        return 'Start walking$street';
+      case 'turn':
+        switch (modifier) {
+          case 'left':
+            return 'Turn left$street';
+          case 'right':
+            return 'Turn right$street';
+          case 'slight left':
+            return 'Turn slightly left$street';
+          case 'slight right':
+            return 'Turn slightly right$street';
+          case 'sharp left':
+            return 'Turn sharp left$street';
+          case 'sharp right':
+            return 'Turn sharp right$street';
+          case 'uturn':
+            return 'Make a U-turn$street';
+          default:
+            return 'Turn $modifier$street';
+        }
+      case 'new name':
+        return 'Continue$street';
+      case 'continue':
+        return 'Continue straight$street';
+      case 'merge':
+        return 'Merge$street';
+      case 'end of road':
+        if (modifier == 'left') return 'At the end, turn left$street';
+        if (modifier == 'right') return 'At the end, turn right$street';
+        return 'End of road$street';
+      case 'fork':
+        if (modifier == 'left') return 'Keep left at fork$street';
+        if (modifier == 'right') return 'Keep right at fork$street';
+        return 'Continue at fork$street';
+      case 'arrive':
+        return 'You have arrived at your destination';
+      default:
+        return 'Continue walking$street';
+    }
+  }
+
+  IconData _getManeuverIcon(String type, String modifier) {
+    switch (type) {
+      case 'depart':
+        return Icons.play_arrow;
+      case 'turn':
+        switch (modifier) {
+          case 'left':
+          case 'slight left':
+          case 'sharp left':
+            return Icons.turn_left;
+          case 'right':
+          case 'slight right':
+          case 'sharp right':
+            return Icons.turn_right;
+          case 'uturn':
+            return Icons.u_turn_left;
+          default:
+            return Icons.straight;
+        }
+      case 'arrive':
+        return Icons.flag;
+      case 'fork':
+        if (modifier == 'left') return Icons.fork_left;
+        if (modifier == 'right') return Icons.fork_right;
+        return Icons.call_split;
+      default:
+        return Icons.straight;
+    }
+  }
+
+  void _stopNavigation() {
+    setState(() {
+      _isNavigating = false;
+      _navigationTarget = null;
+      _navigationTargetName = null;
+      _navigationRoutePoints = [];
+      _navigationSteps = [];
+      _currentNavigationStepIndex = 0;
+    });
+  }
+
+  void _fitNavigationBounds(LatLng from, LatLng to) {
+    try {
+      final bounds = LatLngBounds.fromPoints([from, to]);
+      _mapController.fitCamera(
+        CameraFit.bounds(
+          bounds: bounds,
+          padding: const EdgeInsets.all(80),
+        ),
+      );
+    } catch (_) {}
   }
 
   List<Marker> _buildMarkers() {
@@ -1124,6 +1475,19 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           color: const Color(0xFFFF6E00).withOpacity(0.85),
           borderStrokeWidth: 1.5,
           borderColor: Colors.white.withOpacity(0.5),
+        ),
+      );
+    }
+
+    // Active navigation route (bright blue, rendered on top of the orange tour route)
+    if (_isNavigating && _navigationRoutePoints.length >= 2) {
+      paths.add(
+        Polyline(
+          points: _navigationRoutePoints,
+          strokeWidth: 7.0,
+          color: const Color(0xFF1E88E5), // Bright material blue
+          borderStrokeWidth: 2.5,
+          borderColor: Colors.white,
         ),
       );
     }
@@ -1597,7 +1961,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 ),
 
                 // Tourist-Friendly Location Panel (Bottom Floating Card)
-                if (_mlLocationName != null && _showNearbyPanel)
+                if (_mlLocationName != null && _showNearbyPanel && !_isNavigating)
                   Positioned(
                     bottom: 20,
                     left: 16,
@@ -2101,7 +2465,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                   ),
 
                 // Selected location info
-                if (_selectedLocation != null)
+                if (_selectedLocation != null && !_isNavigating)
                   Positioned(
                     bottom: 16,
                     left: 16,
@@ -2275,7 +2639,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                   ),
 
                 // Show nearby panel button (when panel is hidden)
-                if (!_showNearbyPanel && _mlLocationName != null && _selectedLocation == null)
+                if (!_showNearbyPanel && _mlLocationName != null && _selectedLocation == null && !_isNavigating)
                   Positioned(
                     bottom: 20,
                     left: 16,
@@ -2337,8 +2701,194 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                     ),
                   ),
 
+                // Active Navigation Panel
+                if (_isNavigating && _navigationTargetName != null)
+                  Positioned(
+                    bottom: 20,
+                    left: 16,
+                    right: 16,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Blue header
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Color(0xFF1565C0), Color(0xFF2196F3)],
+                              ),
+                              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.directions_walk, color: Colors.white, size: 24),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'WALKING TO',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white70,
+                                          letterSpacing: 1.2,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _navigationTargetName!,
+                                        style: const TextStyle(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: _stopNavigation,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.2),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.close, color: Colors.white, size: 20),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Turn-by-turn instruction
+                          if (_navigationSteps.isNotEmpty && _currentNavigationStepIndex < _navigationSteps.length)
+                            Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      _getManeuverIcon(
+                                        _navigationSteps[_currentNavigationStepIndex].maneuverType,
+                                        _navigationSteps[_currentNavigationStepIndex].modifier,
+                                      ),
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _navigationSteps[_currentNavigationStepIndex].instruction,
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppTheme.darkStone,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _navigationSteps[_currentNavigationStepIndex].distance > 0
+                                              ? 'in ${_formatDistance(_navigationSteps[_currentNavigationStepIndex].distance)}'
+                                              : '',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          // Distance summary
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                if (_currentPosition != null && _navigationTarget != null)
+                                  Row(
+                                    children: [
+                                      Icon(Icons.straighten, color: Colors.grey[600], size: 18),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        _formatDistance(_calculateDistance(_currentPosition!, _navigationTarget!)),
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.grey[700],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Icon(Icons.schedule, color: Colors.grey[600], size: 18),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        '~${(_calculateDistance(_currentPosition!, _navigationTarget!) / 80).ceil()} min',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.grey[700],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                // Step indicator
+                                if (_navigationSteps.length > 1)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[200],
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      'Step ${_currentNavigationStepIndex + 1}/${_navigationSteps.length}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.grey[700],
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
                 // Places count badge
-                if (_selectedLocation == null && !_showNearbyPanel && _mlLocationName == null)
+                if (_selectedLocation == null && !_showNearbyPanel && _mlLocationName == null && !_isNavigating)
                   Positioned(
                     bottom: 20,
                     right: 20,
@@ -2384,4 +2934,19 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             ),
     );
   }
+}
+
+/// Data class for navigation step instructions.
+class NavigationStep {
+  final String instruction;
+  final double distance;
+  final String maneuverType;
+  final String modifier;
+
+  NavigationStep({
+    required this.instruction,
+    required this.distance,
+    required this.maneuverType,
+    this.modifier = '',
+  });
 }
