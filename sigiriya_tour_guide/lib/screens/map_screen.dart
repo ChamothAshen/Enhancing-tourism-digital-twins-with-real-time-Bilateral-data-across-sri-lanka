@@ -29,6 +29,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   String? _mlLocationName;
   String? _mlDescription;
   bool _isMLProcessing = false;
+  bool _isInitialLoad = true;
   final FlutterTts _flutterTts = FlutterTts();
   
   // Location API Service - Railway deployed backend
@@ -176,9 +177,50 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   Future<void> _initTts() async {
     await _flutterTts.setLanguage("en-US");
-    await _flutterTts.setSpeechRate(0.5);
+    await _flutterTts.setSpeechRate(0.45);
     await _flutterTts.setVolume(1.0);
     await _flutterTts.setPitch(1.0);
+
+    // Select a clearer, higher-quality en-US voice if available
+    try {
+      final voices = await _flutterTts.getVoices as List<dynamic>;
+      final enUsVoices = voices
+          .where((v) => (v['locale'] as String?)?.startsWith('en-US') == true)
+          .toList();
+
+      if (enUsVoices.isNotEmpty) {
+        // Preferred high-quality Android voices (ranked by clarity)
+        const preferredVoices = [
+          'en-us-x-iob-local',   // High-quality female voice
+          'en-us-x-iob-network', // Network version (even clearer)
+          'en-us-x-tpf-local',   // Clear female voice
+          'en-us-x-tpf-network',
+          'en-us-x-sfg-local',   // Clear male voice
+          'en-us-x-sfg-network',
+        ];
+
+        Map<String, dynamic>? chosen;
+        for (final pref in preferredVoices) {
+          final match = enUsVoices.cast<Map<dynamic, dynamic>>().firstWhere(
+            (v) => v['name'] == pref,
+            orElse: () => <dynamic, dynamic>{},
+          );
+          if (match.isNotEmpty) {
+            chosen = Map<String, dynamic>.from(match);
+            break;
+          }
+        }
+        chosen ??= Map<String, dynamic>.from(enUsVoices.first as Map);
+
+        await _flutterTts.setVoice({
+          'name': chosen['name'] as String,
+          'locale': chosen['locale'] as String,
+        });
+      }
+    } catch (e) {
+      // Fall back to default voice if voice selection fails
+      print("TTS voice selection error: $e");
+    }
   }
 
   Future<void> _speak(String text) async {
@@ -512,12 +554,18 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   void _updateUserLocation(LatLng position) {
+    final skipPopups = _isInitialLoad;
+    _isInitialLoad = false;
+
     setState(() {
       _currentPosition = position;
       _isLoading = false;
+    });
+
+    if (!skipPopups) {
       _checkArrival(position);
       _predictLocationWithML(position); // Call the Railway deployed ML API
-    });
+    }
   }
 
   Future<void> _predictLocationWithML(LatLng pos) async {
@@ -555,7 +603,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         _mlLocationName = newLocation;
         _mlDescription = newDesc;
         _nearbyData = nearbyResponse;
-        _showNearbyPanel = true;
+        // Only show the ML nearby panel if no arrival popup is active
+        if (_selectedLocation == null) {
+          _showNearbyPanel = true;
+        }
         _isMLProcessing = false;
       });
     } catch (e) {
@@ -813,12 +864,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   void _checkArrival(LatLng userPos) {
     // Check if within 20 meters of ANY attraction (as per test requirements)
     String? foundAttraction;
+    double minDistance = double.infinity;
     
     _attractions.forEach((name, data) {
       final targetPos = data['position'] as LatLng;
       final distance = _calculateDistance(userPos, targetPos);
       
-      if (distance < 20) {
+      if (distance < 20 && distance < minDistance) {
+        minDistance = distance;
         foundAttraction = name;
       }
     });
