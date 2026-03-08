@@ -1470,6 +1470,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 crossAxisSpacing: 12,
                 childAspectRatio: 1.4,
                 children: [
+                  // Today's predicted crowd from forecast
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -1480,16 +1481,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.people, color: Colors.blue, size: 28),
+                        const Icon(Icons.people_alt, color: Colors.blue, size: 28),
                         const SizedBox(height: 8),
                         Text(
-                          '${_dashboardStats['total_visitors'] ?? 0}',
+                          _weeklyForecast.isNotEmpty
+                              ? '${_getCrowdValue(_weeklyForecast.first)}'
+                              : '--',
                           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
                         ),
-                        const Text('Total Visitors', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                        const Text("Today's Forecast", style: TextStyle(fontSize: 11, color: Colors.grey), textAlign: TextAlign.center),
                       ],
                     ),
                   ),
+                  // Peak visitors in next 7 days
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -1497,19 +1501,27 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.green.withOpacity(0.3)),
                     ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.chat, color: Colors.green, size: 28),
-                        const SizedBox(height: 8),
-                        Text(
-                          '${_dashboardStats['active_chats'] ?? 0}',
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
-                        ),
-                        const Text('Active Chats', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                      ],
-                    ),
+                    child: Builder(builder: (context) {
+                      int peak = 0;
+                      for (var d in _weeklyForecast.take(7)) {
+                        final v = _getCrowdValue(d);
+                        if (v > peak) peak = v;
+                      }
+                      return Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.bar_chart, color: Colors.green, size: 28),
+                          const SizedBox(height: 8),
+                          Text(
+                            _weeklyForecast.isNotEmpty ? '$peak' : '--',
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
+                          ),
+                          const Text('Peak (7-Day)', style: TextStyle(fontSize: 11, color: Colors.grey), textAlign: TextAlign.center),
+                        ],
+                      );
+                    }),
                   ),
+                  // Avg daily visitors from full forecast
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -1517,36 +1529,46 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.orange.withOpacity(0.3)),
                     ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.trending_up, color: Colors.orange, size: 28),
-                        const SizedBox(height: 8),
-                        Text(
-                          '${_dashboardStats['daily_average'] ?? _dashboardStats['today_visits'] ?? 0}',
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.orange),
-                        ),
-                        const Text('Daily Average', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                      ],
-                    ),
+                    child: Builder(builder: (context) {
+                      int total = 0;
+                      for (var d in _weeklyForecast) {
+                        total += _getCrowdValue(d);
+                      }
+                      final avg = _weeklyForecast.isNotEmpty ? total ~/ _weeklyForecast.length : 0;
+                      return Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.trending_up, color: Colors.orange, size: 28),
+                          const SizedBox(height: 8),
+                          Text(
+                            _weeklyForecast.isNotEmpty ? '$avg' : '--',
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.orange),
+                          ),
+                          const Text('Avg Daily (Forecast)', style: TextStyle(fontSize: 11, color: Colors.grey), textAlign: TextAlign.center),
+                        ],
+                      );
+                    }),
                   ),
+                  // Temperature forecast for today
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.purple.withOpacity(0.1),
+                      color: Colors.red.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.purple.withOpacity(0.3)),
+                      border: Border.all(color: Colors.red.withOpacity(0.3)),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.message, color: Colors.purple, size: 28),
+                        const Icon(Icons.thermostat, color: Colors.red, size: 28),
                         const SizedBox(height: 8),
                         Text(
-                          '${(_dashboardStats['total_messages'] ?? 0) ~/ 60}',
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.purple),
+                          _weatherData.isNotEmpty
+                              ? '${_formatWeatherValue(_weatherData.first['temperature'])}°C'
+                              : '--',
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red),
                         ),
-                        const Text('Messages', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                        const Text('Temp Forecast', style: TextStyle(fontSize: 11, color: Colors.grey), textAlign: TextAlign.center),
                       ],
                     ),
                   ),
@@ -2215,7 +2237,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Predicted visitor patterns for 2026',
+              'Current & upcoming months (${DateTime.now().year})',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
             ),
             const SizedBox(height: 24),
@@ -2234,7 +2256,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Annual Overview',
+                        'Remaining Months Overview',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
                       ),
                       Icon(Icons.calendar_today, color: Colors.white70),
@@ -2270,9 +2292,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
   
   List<Widget> _buildMonthlySeasonCards(List<String> monthNames, List<int> peakSeasons, int lowThreshold, int highThreshold, int avgVisitors) {
     final daysPerMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    
+    // Start from the current month (0-indexed), so past months are hidden
+    final currentMonthIndex = DateTime.now().month - 1;
     List<Widget> cards = [];
-    for (int i = 0; i < 12 && i < monthNames.length; i++) {
+    for (int i = currentMonthIndex; i < 12 && i < monthNames.length; i++) {
       final monthName = monthNames[i];
       final visitors = _safeToInt(_monthlyForecast[monthName], avgVisitors);
       
@@ -2442,8 +2465,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final avgMonthly = avgVisitors.isEmpty ? 0 : (avgVisitors.reduce((a, b) => a + b) / avgVisitors.length).toInt();
     
     List<Widget> widgets = [];
-    
-    for (int i = 0; i < 12 && i < monthNames.length; i++) {
+    // Only show current month and future months
+    final currentMonthIndex = DateTime.now().month - 1;
+    for (int i = currentMonthIndex; i < 12 && i < monthNames.length; i++) {
       final monthName = monthNames[i];
       final dailyVisitors = _safeToInt(_monthlyForecast[monthName], avgMonthly);
       
