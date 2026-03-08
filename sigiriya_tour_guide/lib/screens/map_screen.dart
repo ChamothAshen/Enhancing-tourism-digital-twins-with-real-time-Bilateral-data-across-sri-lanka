@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:sigiriya_tour_guide/theme/app_theme.dart';
 import 'package:sigiriya_tour_guide/widgets/chat_bottom_sheet.dart';
 import 'package:sigiriya_tour_guide/services/location_api_service.dart';
+import 'package:sigiriya_tour_guide/services/navigation_service.dart';
 import 'dart:math' as math;
 import 'package:flutter_tts/flutter_tts.dart';
 
@@ -1276,6 +1277,21 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       _navigationSteps = [];
       _currentNavigationStepIndex = 0;
     });
+  }
+
+  void _openGoogleMapsNavigation(String destinationName) {
+    try {
+      NavigationService.openGoogleMapsNavigation(destinationName: destinationName);
+    } catch (e) {
+      print('Error opening Google Maps navigation: $e');
+      // Could show a SnackBar with error message here if needed
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error opening Google Maps. Please make sure Google Maps is installed.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _fitNavigationBounds(LatLng from, LatLng to) {
@@ -2758,6 +2774,37 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                                         ),
                                       ),
                                     ],
+                                  ),
+                                ),
+                                // Google Maps navigation button
+                                GestureDetector(
+                                  onTap: () => _openGoogleMapsNavigation(_navigationTargetName!),
+                                  child: Container(
+                                    margin: const EdgeInsets.only(right: 8),
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: Colors.white.withOpacity(0.3),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.navigation, color: Colors.white, size: 18),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'Maps',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                                 GestureDetector(

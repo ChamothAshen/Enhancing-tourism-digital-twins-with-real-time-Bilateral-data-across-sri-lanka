@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../models/chat_message.dart';
 import '../providers/chat_provider.dart';
 import '../theme/app_theme.dart';
+import '../services/navigation_service.dart';
+import 'navigation_card.dart';
 
 /// A modern tourism-themed chatbot bottom sheet widget.
 /// 
@@ -446,6 +448,43 @@ class _ChatBottomSheetState extends State<ChatBottomSheet>
 
     final isUser = message.isUser;
 
+    // Check if this is a navigation message from AI
+    if (!isUser && NavigationService.isNavigationMessage(message.content)) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12, right: 20),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // AI Avatar
+              Container(
+                width: 28,
+                height: 28,
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryGreen.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.smart_toy_rounded,
+                  color: AppTheme.primaryGreen,
+                  size: 16,
+                ),
+              ),
+              // Navigation Card
+              Flexible(
+                child: NavigationCard(
+                  message: message.content,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Regular message bubble
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(

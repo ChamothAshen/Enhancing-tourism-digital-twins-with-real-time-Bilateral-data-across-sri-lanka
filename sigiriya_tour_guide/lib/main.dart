@@ -4,6 +4,7 @@ import 'package:sigiriya_tour_guide/screens/map_screen.dart';
 import 'package:sigiriya_tour_guide/theme/app_theme.dart';
 import 'package:sigiriya_tour_guide/providers/chat_provider.dart';
 import 'model_viewer_screen.dart';
+import 'screens/navigation_test_screen.dart';
 
 void main() => runApp(const MyApp());
 
@@ -39,13 +40,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final List<Widget> _screens = [
     const MapScreen(),
     const ModelViewerScreen(),
-    const Center(child: Text('Planner Screen Coming Soon')),
+    const NavigationTestScreen(),
   ];
 
   final List<String> _titles = [
     'Sigiriya Map Guide',
     '3D Model Viewer',
-    'Tour Planner',
+    'Navigation Test',
   ];
 
   void _onItemTapped(int index) {
