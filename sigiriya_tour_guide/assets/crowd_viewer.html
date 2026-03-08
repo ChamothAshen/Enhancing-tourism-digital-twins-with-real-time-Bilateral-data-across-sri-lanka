@@ -459,7 +459,6 @@
 
         zones.forEach(function (zone) {
           var count = zone.count || 0;
-          if (count <= 0) return;
 
           // Map normalized [0..1] to original model-space position
           var localX = originalMin.x + zone.x * originalSize.x;
@@ -482,6 +481,7 @@
           // Spread radius proportional to original model size
           var spreadRadius = Math.max(originalSize.x, originalSize.z) * 0.03;
 
+          // Only create individual dots if count > 0
           for (var i = 0; i < count; i++) {
             // Each dot gets its own material so it can blink independently
             var dotMat = new THREE.MeshBasicMaterial({
@@ -534,8 +534,8 @@
           labelCanvas.height = 96;
           var ctx = labelCanvas.getContext("2d");
 
-          // Background pill — semi-transparent so dots show through
-          ctx.fillStyle = "rgba(20,20,20,0.45)";
+          // Background pill — transparent black
+          ctx.fillStyle = "rgba(0,0,0,0.75)";
           ctx.beginPath();
           if (ctx.roundRect) {
             ctx.roundRect(8, 8, 496, 80, 16);
@@ -544,19 +544,15 @@
           }
           ctx.fill();
 
-          // Red accent bar
-          ctx.fillStyle = "rgba(255,23,68,0.7)";
-          ctx.fillRect(8, 8, 6, 80);
-
-          // Text
-          ctx.fillStyle = "rgba(255,255,255,0.9)";
+          // Label name — white
+          ctx.fillStyle = "#FFFFFF";
           ctx.font = "bold 34px -apple-system, Arial, sans-serif";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillText(zone.label || zone.id, 260, 36);
 
-          // Count badge
-          ctx.fillStyle = "rgba(255,23,68,0.9)";
+          // Count badge — pink/red
+          ctx.fillStyle = "#FF4074";
           ctx.font = "bold 28px -apple-system, Arial, sans-serif";
           ctx.fillText(count + " visitors", 260, 68);
 
@@ -564,7 +560,7 @@
           var spriteMaterial = new THREE.SpriteMaterial({
             map: texture,
             transparent: true,
-            opacity: 0.75,
+            opacity: 0.95,
             depthTest: false,
           });
           var sprite = new THREE.Sprite(spriteMaterial);
@@ -684,8 +680,8 @@
       // ==========================================
       // API exposed to Flutter
       // ==========================================
-      // Note: loadModel, updateCrowdDots are already global via function declarations.
-      // Only wrap functions that need aliasing.
+      // Explicitly expose all functions to window for WebView compatibility
+      window.updateCrowdDots = updateCrowdDots;
       window.setModelUrl = function (url) {
         loadModel(url);
       };

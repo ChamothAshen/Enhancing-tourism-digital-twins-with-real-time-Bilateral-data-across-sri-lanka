@@ -74,7 +74,7 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
       "x": 0.4565,
       "y": 0.5983,
       "z": 0.2627,
-      "count": 0,
+      "count": 5,
     },
   };
 
@@ -118,22 +118,27 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
 
   void _startCrowdUpdates() {
     _fetchCrowdData(); // Initial fetch
-    _crowdTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    _crowdTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       _fetchCrowdData();
     });
   }
 
   Future<void> _fetchCrowdData() async {
     final crowdData = await _crowdService.fetchLionsPawCrowd();
-    if (crowdData == null || !mounted) return;
+    if (!mounted) return;
 
-    setState(() {
-      _crowdZones["lion's_paw"]!["count"] = crowdData.count;
-    });
+    if (crowdData != null) {
+      setState(() {
+        _crowdZones["lion's_paw"]!["count"] = crowdData.count;
+      });
+      debugPrint('Crowd data updated: Lion\'s Paw count = ${crowdData.count}');
+    } else {
+      debugPrint(
+        'MongoDB returned null — keeping current Lion\'s Paw count: ${_crowdZones["lion\'s_paw"]!["count"]}',
+      );
+    }
 
-    debugPrint('Crowd data updated: Lion\'s Paw count = ${crowdData.count}');
-
-    // Re-send updated crowd data to the 3D viewer
+    // Always re-send crowd data so dots stay in sync
     _sendCrowdDataToViewer();
   }
 
@@ -248,16 +253,12 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
     super.dispose();
   }
 
-  void _toggleCrowdVisibility() {
+  void _toggleCrowdVisibility() async {
     setState(() {
       _crowdVisible = !_crowdVisible;
     });
-    if (_crowdVisible) {
-      _sendCrowdDataToViewer();
-    }
-    _webViewController?.evaluateJavascript(
-      source: "window.setCrowdVisible($_crowdVisible);",
-    );
+    // Always re-send data + sync visibility in one call
+    await _sendCrowdDataToViewer();
   }
 
   /// Send crowd data to the Three.js scene via JavaScript
@@ -284,21 +285,15 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
     await _webViewController!.evaluateJavascript(
       source: "window.updateCrowdDots('$escaped');",
     );
-    debugPrint('Crowd data sent to viewer: ${zones.length} zones');
 
-    // Retry after a short delay to ensure matrices are ready
-    Future.delayed(const Duration(seconds: 2), () async {
-      if (_webViewController != null && _modelLoaded) {
-        await _webViewController!.evaluateJavascript(
-          source: "window.updateCrowdDots('$escaped');",
-        );
-        // Ensure visibility matches current toggle state
-        await _webViewController!.evaluateJavascript(
-          source: "window.setCrowdVisible($_crowdVisible);",
-        );
-        debugPrint('Crowd data re-sent (delayed retry)');
-      }
-    });
+    // Always sync visibility state after updating dots
+    await _webViewController!.evaluateJavascript(
+      source: "window.setCrowdVisible($_crowdVisible);",
+    );
+
+    debugPrint(
+      'Crowd data sent to viewer: ${zones.length} zones (visible=$_crowdVisible)',
+    );
   }
 
   BoxDecoration _backgroundForPreset() {
@@ -509,15 +504,14 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
                                     _modelLoaded = true;
                                   });
                                   // Send crowd data now that model is ready
-                                  _sendCrowdDataToViewer().then((_) {
-                                    // Hide by default until user toggles on
-                                    if (!_crowdVisible) {
-                                      _webViewController?.evaluateJavascript(
-                                        source:
-                                            "window.setCrowdVisible(false);",
-                                      );
-                                    }
-                                  });
+                                  _sendCrowdDataToViewer();
+                                  // Retry after delay to ensure matrices are fully ready
+                                  Future.delayed(
+                                    const Duration(seconds: 2),
+                                    () {
+                                      _sendCrowdDataToViewer();
+                                    },
+                                  );
                                 },
                               );
 
