@@ -55,6 +55,7 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
   final RiskPredictionService _riskService = RiskPredictionService();
   final CrowdService _crowdService = CrowdService();
   Timer? _crowdTimer;
+  bool _crowdVisible = false;
 
   // Crowd data for zones on the 3D model.
   // Coordinates are normalized [0..1] relative to the model's bounding box.
@@ -247,6 +248,18 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
     super.dispose();
   }
 
+  void _toggleCrowdVisibility() {
+    setState(() {
+      _crowdVisible = !_crowdVisible;
+    });
+    if (_crowdVisible) {
+      _sendCrowdDataToViewer();
+    }
+    _webViewController?.evaluateJavascript(
+      source: "window.setCrowdVisible($_crowdVisible);",
+    );
+  }
+
   /// Send crowd data to the Three.js scene via JavaScript
   Future<void> _sendCrowdDataToViewer() async {
     if (_webViewController == null || !_modelLoaded) return;
@@ -278,6 +291,10 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
       if (_webViewController != null && _modelLoaded) {
         await _webViewController!.evaluateJavascript(
           source: "window.updateCrowdDots('$escaped');",
+        );
+        // Ensure visibility matches current toggle state
+        await _webViewController!.evaluateJavascript(
+          source: "window.setCrowdVisible($_crowdVisible);",
         );
         debugPrint('Crowd data re-sent (delayed retry)');
       }
@@ -492,7 +509,15 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
                                     _modelLoaded = true;
                                   });
                                   // Send crowd data now that model is ready
-                                  _sendCrowdDataToViewer();
+                                  _sendCrowdDataToViewer().then((_) {
+                                    // Hide by default until user toggles on
+                                    if (!_crowdVisible) {
+                                      _webViewController?.evaluateJavascript(
+                                        source:
+                                            "window.setCrowdVisible(false);",
+                                      );
+                                    }
+                                  });
                                 },
                               );
 
@@ -778,6 +803,60 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
                       color: const Color(0xFFF44336),
                     ),
                 ],
+              ),
+            ),
+
+            // Crowd Visibility Toggle Button (Bottom Right)
+            Positioned(
+              bottom: 40,
+              right: 20,
+              child: GestureDetector(
+                onTap: _toggleCrowdVisibility,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _crowdVisible
+                        ? const Color(0xFF8B0000).withOpacity(0.85)
+                        : Colors.black.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: _crowdVisible
+                          ? Colors.redAccent.withOpacity(0.6)
+                          : Colors.white.withOpacity(0.3),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _crowdVisible
+                            ? const Color(0xFF8B0000).withOpacity(0.4)
+                            : Colors.black.withOpacity(0.2),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _crowdVisible ? Icons.groups : Icons.groups_outlined,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _crowdVisible ? 'Hide Crowd' : 'Show Crowd',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ],

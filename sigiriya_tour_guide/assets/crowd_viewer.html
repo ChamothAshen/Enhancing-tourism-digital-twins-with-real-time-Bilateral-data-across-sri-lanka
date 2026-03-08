@@ -698,6 +698,11 @@
         controls.autoRotate = enabled;
         controls.autoRotateSpeed = speed || 2.0;
       };
+      window.setCrowdVisible = function (visible) {
+        if (crowdDotsGroup) {
+          crowdDotsGroup.visible = visible;
+        }
+      };
 
       // ==========================================
       // Animation Loop
