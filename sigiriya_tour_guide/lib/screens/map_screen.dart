@@ -1674,18 +1674,42 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                                       color: Colors.white,
                                     ),
                                   )
-                                else
-                                  GestureDetector(
-                                    onTap: () => setState(() => _showNearbyPanel = false),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
-                                        shape: BoxShape.circle,
+                                else ...
+                                  [
+                                    GestureDetector(
+                                      onTap: () {
+                                        final pos = _attractions[_mlLocationName] != null
+                                            ? _attractions[_mlLocationName]!['position'] as LatLng
+                                            : null;
+                                        ChatBottomSheet.show(
+                                          context,
+                                          _mlLocationName!,
+                                          latitude: pos?.latitude ?? 0.0,
+                                          longitude: pos?.longitude ?? 0.0,
+                                        );
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.2),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.smart_toy_rounded, color: Colors.white, size: 18),
                                       ),
-                                      child: const Icon(Icons.close, color: Colors.white, size: 18),
                                     ),
-                                  ),
+                                    const SizedBox(width: 8),
+                                    GestureDetector(
+                                      onTap: () => setState(() => _showNearbyPanel = false),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.2),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.close, color: Colors.white, size: 18),
+                                      ),
+                                    ),
+                                  ],
                               ],
                             ),
                           ),

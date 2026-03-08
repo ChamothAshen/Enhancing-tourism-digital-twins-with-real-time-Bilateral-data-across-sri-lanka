@@ -153,8 +153,8 @@ class _ChatBottomSheetState extends State<ChatBottomSheet>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppTheme.accentMaroon,
-            AppTheme.accentMaroon.withOpacity(0.8),
+            AppTheme.primaryGreen,
+            AppTheme.primaryGreen.withOpacity(0.8),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -193,7 +193,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet>
                 ),
                 child: const Icon(
                   Icons.smart_toy_rounded,
-                  color: AppTheme.accentMaroon,
+                  color: AppTheme.primaryGreen,
                   size: 26,
                 ),
               ),
@@ -278,7 +278,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet>
           Icon(
             Icons.temple_buddhist_rounded,
             size: 64,
-            color: AppTheme.accentMaroon.withOpacity(0.3),
+            color: AppTheme.primaryGreen.withOpacity(0.3),
           ),
           const SizedBox(height: 16),
           Text(
@@ -314,7 +314,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet>
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   valueColor: AlwaysStoppedAnimation<Color>(
-                    AppTheme.accentMaroon.withOpacity(0.7),
+                    AppTheme.primaryGreen.withOpacity(0.7),
                   ),
                 ),
               ),
@@ -382,12 +382,12 @@ class _ChatBottomSheetState extends State<ChatBottomSheet>
                 height: 28,
                 margin: const EdgeInsets.only(right: 8),
                 decoration: BoxDecoration(
-                  color: AppTheme.accentMaroon.withOpacity(0.1),
+                  color: AppTheme.primaryGreen.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.smart_toy_rounded,
-                  color: AppTheme.accentMaroon,
+                  color: AppTheme.primaryGreen,
                   size: 16,
                 ),
               ),
@@ -401,7 +401,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet>
                 ),
                 decoration: BoxDecoration(
                   color: isUser 
-                      ? AppTheme.accentMaroon
+                      ? AppTheme.primaryGreen
                       : Colors.grey[100],
                   borderRadius: BorderRadius.only(
                     topLeft: const Radius.circular(16),
@@ -450,9 +450,9 @@ class _ChatBottomSheetState extends State<ChatBottomSheet>
                 suggestion,
                 style: const TextStyle(fontSize: 12),
               ),
-              backgroundColor: AppTheme.accentMaroon.withOpacity(0.1),
+              backgroundColor: AppTheme.primaryGreen.withOpacity(0.1),
               side: BorderSide(
-                color: AppTheme.accentMaroon.withOpacity(0.3),
+                color: AppTheme.primaryGreen.withOpacity(0.3),
               ),
               onPressed: () {
                 _textController.text = suggestion;
@@ -515,7 +515,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet>
           Material(
             color: provider.isLoading 
                 ? Colors.grey[300]
-                : AppTheme.accentMaroon,
+                : AppTheme.primaryGreen,
             borderRadius: BorderRadius.circular(24),
             child: InkWell(
               onTap: provider.isLoading 
