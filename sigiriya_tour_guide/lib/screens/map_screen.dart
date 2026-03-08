@@ -8,6 +8,7 @@ import 'package:sigiriya_tour_guide/theme/app_theme.dart';
 import 'package:sigiriya_tour_guide/widgets/chat_bottom_sheet.dart';
 import 'package:sigiriya_tour_guide/services/location_api_service.dart';
 import 'package:sigiriya_tour_guide/services/navigation_service.dart';
+import 'package:sigiriya_tour_guide/widgets/embedded_map_overlay.dart';
 import 'dart:math' as math;
 import 'package:flutter_tts/flutter_tts.dart';
 
@@ -47,6 +48,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   bool _isNavigating = false;
   List<NavigationStep> _navigationSteps = [];
   int _currentNavigationStepIndex = 0;
+  
+  // Embedded map state
+  bool _showEmbeddedMap = false;
 
   // Sigiriya Rock coordinates
   static const LatLng sigiriyaRock = LatLng(7.9570, 80.7603);
@@ -2776,9 +2780,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                                     ],
                                   ),
                                 ),
-                                // Google Maps navigation button
+                                // Embedded Map toggle button
                                 GestureDetector(
-                                  onTap: () => _openGoogleMapsNavigation(_navigationTargetName!),
+                                  onTap: () {
+                                    setState(() {
+                                      _showEmbeddedMap = !_showEmbeddedMap;
+                                    });
+                                  },
                                   child: Container(
                                     margin: const EdgeInsets.only(right: 8),
                                     padding: const EdgeInsets.all(8),
@@ -2821,6 +2829,22 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                               ],
                             ),
                           ),
+                          // Embedded Map Overlay inside the navigation panel
+                          if (_showEmbeddedMap && _currentPosition != null && _navigationTarget != null)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              child: EmbeddedMapOverlay(
+                                currentPosition: _currentPosition!,
+                                destination: _navigationTarget!,
+                                destinationName: _navigationTargetName ?? 'Destination',
+                                routePoints: _navigationRoutePoints,
+                                onClose: () {
+                                  setState(() {
+                                    _showEmbeddedMap = false;
+                                  });
+                                },
+                              ),
+                            ),
                           // Turn-by-turn instruction
                           if (_navigationSteps.isNotEmpty && _currentNavigationStepIndex < _navigationSteps.length)
                             Container(
