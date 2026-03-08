@@ -184,7 +184,7 @@
       var entranceAnimating = false;
       var entranceProgress = 0;
       var targetScale = 1;
-      var MODEL_SCALE_FACTOR = 4.5;
+      var MODEL_SCALE_FACTOR = 3.0;
 
       var loader = new THREE.GLTFLoader();
       var loadingOverlay = document.getElementById("loading-overlay");
@@ -260,17 +260,31 @@
             modelGroup.add(crowdDotsGroup);
 
             // Compute where camera should look at final scale
+            // Focus on Lion's Paw area — normalized coords (0.4565, 0.5983, 0.2627)
             var scaledSize = new THREE.Vector3()
               .copy(size)
               .multiplyScalar(targetScale);
-            var scaledCenter = new THREE.Vector3(0, 0, 0); // centered at origin
-            var dist = Math.max(scaledSize.x, scaledSize.y, scaledSize.z) * 1.2;
-            camera.position.set(
-              scaledCenter.x + dist * 0.4,
-              scaledCenter.y + dist * 0.5,
-              scaledCenter.z + dist * 0.8,
+            var scaledCenter = new THREE.Vector3(0, 0, 0);
+
+            var lionsPawTarget = new THREE.Vector3(
+              (-center.x + originalMin.x + 0.4565 * originalSize.x) *
+                targetScale,
+              (-center.y + originalMin.y + 0.5983 * originalSize.y) *
+                targetScale,
+              (-center.z + originalMin.z + 0.2627 * originalSize.z) *
+                targetScale,
             );
-            controls.target.copy(scaledCenter);
+
+            // Camera positioned in front of Lion's Paw (negative Z = front face)
+            // looking slightly up at the rock.
+            var viewDist =
+              Math.max(scaledSize.x, scaledSize.y, scaledSize.z) * 0.7;
+            camera.position.set(
+              lionsPawTarget.x + viewDist * 0.1,
+              lionsPawTarget.y + viewDist * 0.3,
+              lionsPawTarget.z - viewDist * 0.75,
+            );
+            controls.target.copy(lionsPawTarget);
             controls.update();
 
             // Start entrance animation
@@ -385,7 +399,7 @@
       // Crowd Dot Management
       // ==========================================
       var dotMaterialRed = new THREE.MeshBasicMaterial({
-        color: 0x000000,
+        color: 0x8b0000,
       });
 
       function updateCrowdDots(jsonData) {
@@ -469,7 +483,13 @@
           var spreadRadius = Math.max(originalSize.x, originalSize.z) * 0.03;
 
           for (var i = 0; i < count; i++) {
-            var dot = new THREE.Mesh(dotGeometry, dotMaterialRed);
+            // Each dot gets its own material so it can blink independently
+            var dotMat = new THREE.MeshBasicMaterial({
+              color: 0x8b0000,
+              transparent: true,
+              opacity: 1.0,
+            });
+            var dot = new THREE.Mesh(dotGeometry, dotMat);
 
             // Sunflower spiral pattern for even distribution
             var angle = (i / count) * Math.PI * 2 + i * 2.39996; // golden angle
@@ -478,6 +498,14 @@
             var offsetZ = Math.sin(angle) * r;
 
             dot.position.set(localX + offsetX, localY, localZ + offsetZ);
+
+            // Store blink/movement parameters per dot
+            dot.userData.isDot = true;
+            dot.userData.baseY = localY;
+            dot.userData.phaseOffset = Math.random() * Math.PI * 2;
+            dot.userData.blinkSpeed = 1.5 + Math.random() * 2.0; // varied blink rates
+            dot.userData.bobSpeed = 0.8 + Math.random() * 1.2;
+            dot.userData.bobAmount = DOT_RADIUS * (0.3 + Math.random() * 0.5);
 
             crowdDotsGroup.add(dot);
           }
@@ -506,8 +534,8 @@
           labelCanvas.height = 96;
           var ctx = labelCanvas.getContext("2d");
 
-          // Background pill
-          ctx.fillStyle = "rgba(20,20,20,0.85)";
+          // Background pill — semi-transparent so dots show through
+          ctx.fillStyle = "rgba(20,20,20,0.45)";
           ctx.beginPath();
           if (ctx.roundRect) {
             ctx.roundRect(8, 8, 496, 80, 16);
@@ -517,18 +545,18 @@
           ctx.fill();
 
           // Red accent bar
-          ctx.fillStyle = "#ff1744";
+          ctx.fillStyle = "rgba(255,23,68,0.7)";
           ctx.fillRect(8, 8, 6, 80);
 
           // Text
-          ctx.fillStyle = "#ffffff";
+          ctx.fillStyle = "rgba(255,255,255,0.9)";
           ctx.font = "bold 34px -apple-system, Arial, sans-serif";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillText(zone.label || zone.id, 260, 36);
 
           // Count badge
-          ctx.fillStyle = "#ff1744";
+          ctx.fillStyle = "rgba(255,23,68,0.9)";
           ctx.font = "bold 28px -apple-system, Arial, sans-serif";
           ctx.fillText(count + " visitors", 260, 68);
 
@@ -536,12 +564,13 @@
           var spriteMaterial = new THREE.SpriteMaterial({
             map: texture,
             transparent: true,
+            opacity: 0.75,
             depthTest: false,
           });
           var sprite = new THREE.Sprite(spriteMaterial);
           var labelHeight = Math.max(originalSize.y * 0.06, 0.3);
           sprite.position.set(localX, localY + labelHeight, localZ);
-          sprite.scale.set(labelHeight * 5, labelHeight * 0.95, 1);
+          sprite.scale.set(labelHeight * 3.5, labelHeight * 0.7, 1);
           crowdDotsGroup.add(sprite);
         });
 
@@ -564,9 +593,25 @@
         if (!crowdDotsGroup) return;
         crowdDotsGroup.children.forEach(function (child) {
           if (child.userData && child.userData.isPulse) {
+            // Ring pulse
             child.material.opacity = 0.1 + Math.sin(pulseTime * 2) * 0.08;
             var s = 1 + Math.sin(pulseTime * 1.5) * 0.08;
             child.scale.set(s, s, s);
+          }
+          if (child.userData && child.userData.isDot) {
+            // Dots always stay fully visible (opacity 1.0) so they can be counted.
+            // Instead, pulse the SIZE to give a lively "breathing" effect.
+            var phase = child.userData.phaseOffset;
+            var scaleVal = Math.sin(
+              pulseTime * child.userData.blinkSpeed + phase,
+            );
+            var s = 1.0 + scaleVal * 0.25; // scale between 0.75x and 1.25x
+            child.scale.set(s, s, s);
+
+            // Subtle vertical bob to simulate people moving
+            var bobVal = Math.sin(pulseTime * child.userData.bobSpeed + phase);
+            child.position.y =
+              child.userData.baseY + bobVal * child.userData.bobAmount;
           }
         });
       }

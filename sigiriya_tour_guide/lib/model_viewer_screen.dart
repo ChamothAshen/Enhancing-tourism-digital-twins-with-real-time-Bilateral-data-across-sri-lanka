@@ -6,6 +6,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'dart:async';
 import 'package:sigiriya_tour_guide/services/weather_service.dart';
 import 'package:sigiriya_tour_guide/services/risk_prediction_service.dart';
+import 'package:sigiriya_tour_guide/services/crowd_service.dart';
 
 enum TimePreset { day, evening, night }
 
@@ -52,11 +53,14 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
   Timer? _weatherTimer;
   final WeatherService _weatherService = WeatherService();
   final RiskPredictionService _riskService = RiskPredictionService();
+  final CrowdService _crowdService = CrowdService();
+  Timer? _crowdTimer;
 
   // Crowd data for zones on the 3D model.
   // Coordinates are normalized [0..1] relative to the model's bounding box.
-  // You can use debug mode (tap on model) to find exact coordinates for your GLB.
-  final Map<String, Map<String, dynamic>> _crowdZones = {
+  // Summit: hardcoded | Lion's Paw: fetched from MongoDB in real-time
+  // 1 dot = 1 person
+  Map<String, Map<String, dynamic>> _crowdZones = {
     "summit": {
       "label": "Summit Palace",
       "x": 0.50,
@@ -69,7 +73,7 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
       "x": 0.4565,
       "y": 0.5983,
       "z": 0.2627,
-      "count": 20,
+      "count": 0,
     },
   };
 
@@ -79,6 +83,7 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
     _startLocalServer();
     _setupAntigravity();
     _startWeatherUpdates();
+    _startCrowdUpdates();
   }
 
   Future<void> _startLocalServer() async {
@@ -108,6 +113,27 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
     _weatherTimer = Timer.periodic(const Duration(minutes: 2), (_) {
       _fetchWeather();
     });
+  }
+
+  void _startCrowdUpdates() {
+    _fetchCrowdData(); // Initial fetch
+    _crowdTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _fetchCrowdData();
+    });
+  }
+
+  Future<void> _fetchCrowdData() async {
+    final crowdData = await _crowdService.fetchLionsPawCrowd();
+    if (crowdData == null || !mounted) return;
+
+    setState(() {
+      _crowdZones["lion's_paw"]!["count"] = crowdData.count;
+    });
+
+    debugPrint('Crowd data updated: Lion\'s Paw count = ${crowdData.count}');
+
+    // Re-send updated crowd data to the 3D viewer
+    _sendCrowdDataToViewer();
   }
 
   Future<void> _fetchWeather() async {
@@ -215,6 +241,8 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
   void dispose() {
     _antigravityController.dispose();
     _weatherTimer?.cancel();
+    _crowdTimer?.cancel();
+    _crowdService.close();
     _localhostServer?.close();
     super.dispose();
   }
