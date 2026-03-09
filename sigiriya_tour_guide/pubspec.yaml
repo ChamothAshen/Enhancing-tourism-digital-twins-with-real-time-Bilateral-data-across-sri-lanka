@@ -42,6 +42,7 @@ dependencies:
   flutter_dotenv: ^5.1.0
   csv: ^6.0.0
   mongo_dart: ^0.10.8
+  intl: ^0.19.0
 
 dev_dependencies:
   flutter_test:
@@ -75,6 +76,7 @@ flutter:
     - assets/data/
     - assets/data/sigiriya_smart_categorized_reviews.csv
     - assets/data/global_tourism_problem_solution_dataset.csv
+    - assets/data/sigiriya_visitor_arrival.csv
     - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see

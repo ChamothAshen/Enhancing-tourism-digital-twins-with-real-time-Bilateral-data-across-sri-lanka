@@ -5,6 +5,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'model_viewer_screen.dart';
 import 'screens/feedback_dashboard_screen.dart';
+import 'screens/visitor_arrival_screen.dart';
 
 // ===== TESTING MODE =====
 // Set this to true to use mock location for testing
@@ -55,6 +56,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     'Sigiriya Tour Guide Map',
     '3D Model Viewer',
     'Feedback Analysis',
+    'Visitor Analytics',
   ];
 
   @override
@@ -64,6 +66,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       HomePage(key: _homeKey),
       const ModelViewerScreen(),
       const FeedbackDashboardScreen(),
+      const VisitorArrivalScreen(),
     ];
   }
 
@@ -126,6 +129,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       ),
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Map'),
           BottomNavigationBarItem(
@@ -135,6 +139,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.analytics),
             label: 'Feedback',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.bar_chart),
+            label: 'Visitors',
           ),
         ],
         currentIndex: _selectedIndex,
