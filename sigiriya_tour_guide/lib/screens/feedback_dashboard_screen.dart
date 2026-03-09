@@ -46,141 +46,124 @@ class _FeedbackDashboardScreenState extends State<FeedbackDashboardScreen> {
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _loadData,
-        child: CustomScrollView(
-          slivers: [
-            // Header section
-            SliverToBoxAdapter(
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Theme.of(context).colorScheme.primary,
-                      Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: SafeArea(
-                  bottom: false,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.analytics, color: Colors.white, size: 28),
-                          SizedBox(width: 12),
-                          Text(
-                            'Feedback Analysis',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Zero-shot sentiment analysis of visitor reviews',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.white.withValues(alpha: 0.9),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      // Summary stats
-                      Row(
-                        children: [
-                          _buildStatCard(
-                            'Total Reviews',
-                            _dataManager.getTotalFeedbackCount().toString(),
-                            Icons.comment,
-                          ),
-                          const SizedBox(width: 12),
-                          _buildStatCard(
-                            'Categories',
-                            issueTypes.length.toString(),
-                            Icons.category,
-                          ),
-                          const SizedBox(width: 12),
-                          _buildStatCard(
-                            'Top Issue',
-                            _getShortName(_dataManager.getMostCommonIssue()),
-                            Icons.trending_up,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            // Summary stats row
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 40, 20, 16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Theme.of(context).colorScheme.primary,
+                    Theme.of(context).colorScheme.primary.withAlpha(180),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
-            ),
-            // Section title
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
-                child: Row(
+              child: SafeArea(
+                bottom: false,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.sentiment_dissatisfied,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
+                    Row(
+                      children: [
+                        Icon(Icons.analytics, color: Colors.white, size: 28),
+                        SizedBox(width: 12),
+                        Text(
+                          'Feedback Dashboard',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Issue Categories',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            'Tap a category to view feedbacks & solutions',
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                        ],
-                      ),
+                    SizedBox(height: 16),
+                    Row(
+                      children: [
+                        _buildStatCard(
+                          'Total Reviews',
+                          _dataManager.getTotalFeedbackCount().toString(),
+                          Icons.comment,
+                        ),
+                        SizedBox(width: 16),
+                        _buildStatCard(
+                          'Categories',
+                          issueTypes.length.toString(),
+                          Icons.category,
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ),
+            // Section title
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.sentiment_dissatisfied,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Issue Categories',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'Tap a category to view feedbacks & solutions',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
             // Issue type grid
-            SliverPadding(
+            Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              child: GridView.builder(
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
                   childAspectRatio: 0.95,
                 ),
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final issueType = issueTypes[index];
-                    return _IssueTypeCard(
-                      issueType: issueType,
-                      dataManager: _dataManager,
-                    );
-                  },
-                  childCount: issueTypes.length,
-                ),
+                itemCount: issueTypes.length,
+                itemBuilder: (context, index) {
+                  final issueType = issueTypes[index];
+                  final uniqueSolutions = _dataManager.getUniqueSolutionsByIssueType(issueType.id);
+                  return _IssueTypeCard(
+                    issueType: issueType,
+                    dataManager: _dataManager,
+                    solutionCount: uniqueSolutions.length,
+                  );
+                },
               ),
             ),
-            // Bottom padding
-            const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
+            SizedBox(height: 100),
           ],
         ),
       ),
@@ -232,10 +215,12 @@ class _FeedbackDashboardScreenState extends State<FeedbackDashboardScreen> {
 class _IssueTypeCard extends StatelessWidget {
   final IssueType issueType;
   final FeedbackDataManager dataManager;
+  final int solutionCount;
 
   const _IssueTypeCard({
     required this.issueType,
     required this.dataManager,
+    required this.solutionCount,
   });
 
   @override
@@ -282,7 +267,7 @@ class _IssueTypeCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      '${feedbackList.length}',
+                      '$solutionCount',
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,

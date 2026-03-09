@@ -146,6 +146,15 @@ final List<IssueType> issueTypes = [
 
 // Data manager class
 class FeedbackDataManager {
+    // Get unique solutions by issue type
+    List<Solution> getUniqueSolutionsByIssueType(String issueType) {
+      final all = getSolutionsByIssueType(issueType);
+      final unique = <String, Solution>{};
+      for (var s in all) {
+        unique[s.solutionDescription.trim()] = s;
+      }
+      return unique.values.toList();
+    }
   static final FeedbackDataManager _instance = FeedbackDataManager._internal();
   factory FeedbackDataManager() => _instance;
   FeedbackDataManager._internal();
@@ -210,7 +219,9 @@ class FeedbackDataManager {
   }
 
   List<FeedbackItem> getFeedbacksByCategory(String category) {
-    return _feedbacks.where((f) => f.category == category).toList()
+    return _feedbacks
+        .where((f) => f.category.trim().toLowerCase() == category.trim().toLowerCase())
+        .toList()
       ..sort((a, b) => b.confidence.compareTo(a.confidence));
   }
 
