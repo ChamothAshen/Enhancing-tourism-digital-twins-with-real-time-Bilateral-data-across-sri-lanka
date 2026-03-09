@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'model_viewer_screen.dart';
+import 'screens/feedback_dashboard_screen.dart';
 
 // ===== TESTING MODE =====
 // Set this to true to use mock location for testing
@@ -53,13 +54,17 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final List<String> _titles = [
     'Sigiriya Tour Guide Map',
     '3D Model Viewer',
-    " Test",
+    'Feedback Analysis',
   ];
 
   @override
   void initState() {
     super.initState();
-    _screens = [HomePage(key: _homeKey), const ModelViewerScreen()];
+    _screens = [
+      HomePage(key: _homeKey),
+      const ModelViewerScreen(),
+      const FeedbackDashboardScreen(),
+    ];
   }
 
   void _onItemTapped(int index) {
@@ -112,32 +117,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       appBar: AppBar(
         title: Text(_titles[_selectedIndex]),
         actions: [
-          // Visitor Feedback Button
-          IconButton(
-            icon: const Icon(Icons.reviews),
-            tooltip: 'Visitor Feedback',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const SentimentAnalysisScreen(),
-                ),
-              );
-            },
-          ),
-          // Manager Dashboard Button
-          IconButton(
-            icon: const Icon(Icons.analytics),
-            tooltip: 'Manager Dashboard',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ManagerDashboardScreen(),
-                ),
-              );
-            },
-          ),
           if (_selectedIndex == 1)
             IconButton(
               icon: const Icon(Icons.info_outline),
@@ -152,6 +131,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.view_in_ar),
             label: '3D Model',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.analytics),
+            label: 'Feedback',
           ),
         ],
         currentIndex: _selectedIndex,

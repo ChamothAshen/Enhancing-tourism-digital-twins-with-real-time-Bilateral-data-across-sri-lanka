@@ -40,6 +40,7 @@ dependencies:
   flutter_inappwebview: ^6.1.5
   http: ^1.2.0
   flutter_dotenv: ^5.1.0
+  csv: ^6.0.0
 
 dev_dependencies:
   flutter_test:
@@ -70,8 +71,9 @@ flutter:
     - assets/Duck.glb
     - assets/viewer.html
     - assets/crowd_viewer.html
-    - assets/sigiriya_arrival_categorize.csv
-    - assets/sigiriya_smart_categorized_reviews.csv
+    - assets/data/
+    - assets/data/sigiriya_smart_categorized_reviews.csv
+    - assets/data/global_tourism_problem_solution_dataset.csv
     - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see
