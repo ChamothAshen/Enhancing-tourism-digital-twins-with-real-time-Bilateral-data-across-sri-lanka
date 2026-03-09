@@ -5,7 +5,9 @@ import 'admin_dashboard.dart';
 import 'admin_login_screen.dart';
 
 class ManagerPortalScreen extends StatefulWidget {
-  const ManagerPortalScreen({super.key});
+  final Map<String, dynamic>? initialAdminData;
+  
+  const ManagerPortalScreen({super.key, this.initialAdminData});
 
   @override
   State<ManagerPortalScreen> createState() => _ManagerPortalScreenState();
@@ -15,6 +17,16 @@ class _ManagerPortalScreenState extends State<ManagerPortalScreen> {
   int _selectedIndex = 0;
   Map<String, dynamic>? _adminData;
   bool _isAdminLoggedIn = false;
+  
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialAdminData != null) {
+      _adminData = widget.initialAdminData;
+      _isAdminLoggedIn = true;
+      _selectedIndex = 2; // Start on Admin Dashboard tab
+    }
+  }
 
   final List<String> _titles = [
     'Feedback Analytics',

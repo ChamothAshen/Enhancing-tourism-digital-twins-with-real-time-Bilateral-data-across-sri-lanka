@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'admin_register_screen.dart';
-import 'admin_dashboard.dart';
+import 'manager_portal_screen.dart';
 import '../config/api_config.dart';
 
 class AdminLoginScreen extends StatefulWidget {
@@ -63,7 +63,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => AdminDashboard(adminData: adminData),
+            builder: (context) => ManagerPortalScreen(initialAdminData: adminData),
           ),
         );
       } else {
