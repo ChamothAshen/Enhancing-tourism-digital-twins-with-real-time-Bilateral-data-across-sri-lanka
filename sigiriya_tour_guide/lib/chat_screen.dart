@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_tts/flutter_tts.dart';
+import 'config/api_config.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -10,24 +11,21 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen>
-    with TickerProviderStateMixin {
+class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final TextEditingController _chatController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<ChatMessage> _messages = [];
-  bool isApiHealthy = false;
   bool _isLoading = false;
   late AnimationController _headerAnimationController;
   late AnimationController _themeAnimationController;
 
   // Professional theme colors
-  Color _currentPrimaryColor = const Color(0xFF2D3E50);  // Dark slate
-  Color _currentAccentColor = const Color(0xFF3498DB);   // Professional blue
-  Color _currentBgColor = const Color(0xFFFBFCFD);       // Almost white
+  Color _currentPrimaryColor = const Color(0xFF2D3E50); // Dark slate
+  Color _currentAccentColor = const Color(0xFF3498DB); // Professional blue
+  Color _currentBgColor = const Color(0xFFFBFCFD); // Almost white
   String _currentThemeType = 'default';
 
-  // API URL: Use 10.0.2.2 for Android Emulator, localhost for web/desktop
-  static const String apiBaseUrl = 'http://10.0.2.2:8000';
+  static const String apiBaseUrl = ApiConfig.baseUrl;
 
   // Quick suggestion buttons
   final List<String> _quickSuggestions = [
@@ -44,12 +42,11 @@ class _ChatScreenState extends State<ChatScreen>
   @override
   void initState() {
     super.initState();
-    _checkApiHealth();
     _headerAnimationController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
-    
+
     _themeAnimationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
@@ -79,31 +76,6 @@ class _ChatScreenState extends State<ChatScreen>
     _headerAnimationController.dispose();
     _themeAnimationController.dispose();
     super.dispose();
-  }
-
-  Future<void> _checkApiHealth() async {
-    try {
-      final response = await http
-          .get(
-            Uri.parse('$apiBaseUrl/health'),
-            headers: {'accept': 'application/json'},
-          )
-          .timeout(const Duration(seconds: 5));
-
-      if (mounted) {
-        setState(() {
-          isApiHealthy = response.statusCode == 200;
-        });
-      }
-      debugPrint('API Health Check: ${isApiHealthy ? 'Healthy' : 'Unhealthy'}');
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          isApiHealthy = false;
-        });
-      }
-      debugPrint('API Health Check Failed: $e');
-    }
   }
 
   void _scrollToBottom() {
@@ -149,12 +121,13 @@ class _ChatScreenState extends State<ChatScreen>
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         botResponse = data['assistant_response'] ?? 'No response';
-        
+
         // Extract best_days and target_month if available
-        if (data['best_days'] != null && (data['best_days'] as List).isNotEmpty) {
+        if (data['best_days'] != null &&
+            (data['best_days'] as List).isNotEmpty) {
           bestDays = [];
           targetMonth = data['target_month'];
-          
+
           for (var dayData in data['best_days']) {
             try {
               final dateStr = dayData['date'];
@@ -189,7 +162,7 @@ class _ChatScreenState extends State<ChatScreen>
           _isLoading = false;
         });
         _scrollToBottom();
-        
+
         // Detect query type and apply theme
         _detectQueryTypeAndApplyTheme(userMessage, botResponse);
       }
@@ -214,64 +187,104 @@ class _ChatScreenState extends State<ChatScreen>
 
   void _detectQueryTypeAndApplyTheme(String userMessage, String botResponse) {
     final lowerMessage = userMessage.toLowerCase();
-    
+
     // Rain theme - Professional blue
     if (lowerMessage.contains('rain')) {
       setState(() {
-        _currentPrimaryColor = const Color(0xFF1E5A96);  // Dark professional blue
-        _currentAccentColor = const Color(0xFF2E7CB8);   // Medium blue
+        _currentPrimaryColor = const Color(
+          0xFF1E5A96,
+        ); // Dark professional blue
+        _currentAccentColor = const Color(0xFF2E7CB8); // Medium blue
         _currentThemeType = 'rain';
       });
-      _showThemePopup('Rain Forecast', 'Rainfall expected. Bring an umbrella and waterproof gear.', const Color(0xFF2E7CB8), '🌧️');
+      _showThemePopup(
+        'Rain Forecast',
+        'Rainfall expected. Bring an umbrella and waterproof gear.',
+        const Color(0xFF2E7CB8),
+        '🌧️',
+      );
     }
     // Wind theme - Professional teal
     else if (lowerMessage.contains('wind')) {
       setState(() {
-        _currentPrimaryColor = const Color(0xFF0D6E7C);  // Dark teal
-        _currentAccentColor = const Color(0xFF0F8F9E);   // Medium teal
+        _currentPrimaryColor = const Color(0xFF0D6E7C); // Dark teal
+        _currentAccentColor = const Color(0xFF0F8F9E); // Medium teal
         _currentThemeType = 'wind';
       });
-      _showThemePopup('Wind Conditions', 'Strong winds detected. Wear light layers for comfort.', const Color(0xFF0F8F9E), '💨');
+      _showThemePopup(
+        'Wind Conditions',
+        'Strong winds detected. Wear light layers for comfort.',
+        const Color(0xFF0F8F9E),
+        '💨',
+      );
     }
     // Temperature theme - Professional warm orange
-    else if (lowerMessage.contains('temperature') || lowerMessage.contains('hot') || lowerMessage.contains('temp')) {
+    else if (lowerMessage.contains('temperature') ||
+        lowerMessage.contains('hot') ||
+        lowerMessage.contains('temp')) {
       setState(() {
-        _currentPrimaryColor = const Color(0xFF8B4513);  // Dark brown-orange
-        _currentAccentColor = const Color(0xFFD2691E);   // Medium warm tone
+        _currentPrimaryColor = const Color(0xFF8B4513); // Dark brown-orange
+        _currentAccentColor = const Color(0xFFD2691E); // Medium warm tone
         _currentThemeType = 'temperature';
       });
-      _showThemePopup('High Temperature', 'Warm weather ahead. Stay hydrated and use sunscreen.', const Color(0xFFD2691E), '☀️');
+      _showThemePopup(
+        'High Temperature',
+        'Warm weather ahead. Stay hydrated and use sunscreen.',
+        const Color(0xFFD2691E),
+        '☀️',
+      );
     }
     // Crowd theme - Professional purple
     else if (lowerMessage.contains('crowd') || lowerMessage.contains('busy')) {
       setState(() {
-        _currentPrimaryColor = const Color(0xFF5D3A6E);  // Dark purple
-        _currentAccentColor = const Color(0xFF7B5A9F);   // Medium purple
+        _currentPrimaryColor = const Color(0xFF5D3A6E); // Dark purple
+        _currentAccentColor = const Color(0xFF7B5A9F); // Medium purple
         _currentThemeType = 'crowd';
       });
-      _showThemePopup('Crowd Alert', 'High visitor numbers expected. Arrive early for better experience.', const Color(0xFF7B5A9F), '👥');
+      _showThemePopup(
+        'Crowd Alert',
+        'High visitor numbers expected. Arrive early for better experience.',
+        const Color(0xFF7B5A9F),
+        '👥',
+      );
     }
     // Best days theme - Professional gold
     else if (lowerMessage.contains('best day')) {
       setState(() {
-        _currentPrimaryColor = const Color(0xFF6B5414);  // Dark gold
-        _currentAccentColor = const Color(0xFF9B8A30);   // Medium gold
+        _currentPrimaryColor = const Color(0xFF6B5414); // Dark gold
+        _currentAccentColor = const Color(0xFF9B8A30); // Medium gold
         _currentThemeType = 'best_days';
       });
-      _showThemePopup('Perfect Days', 'Ideal conditions for visiting with low crowds and great weather.', const Color(0xFF9B8A30), '✨');
+      _showThemePopup(
+        'Perfect Days',
+        'Ideal conditions for visiting with low crowds and great weather.',
+        const Color(0xFF9B8A30),
+        '✨',
+      );
     }
     // Weather update theme - Professional indigo
-    else if (lowerMessage.contains('weather') || lowerMessage.contains('forecast')) {
+    else if (lowerMessage.contains('weather') ||
+        lowerMessage.contains('forecast')) {
       setState(() {
-        _currentPrimaryColor = const Color(0xFF483D8B);  // Dark slate blue
-        _currentAccentColor = const Color(0xFF6A5ACD);   // Medium slate blue
+        _currentPrimaryColor = const Color(0xFF483D8B); // Dark slate blue
+        _currentAccentColor = const Color(0xFF6A5ACD); // Medium slate blue
         _currentThemeType = 'weather';
       });
-      _showThemePopup('Weather Update', 'Latest forecast received. Plan your visit accordingly.', const Color(0xFF6A5ACD), '🌈');
+      _showThemePopup(
+        'Weather Update',
+        'Latest forecast received. Plan your visit accordingly.',
+        const Color(0xFF6A5ACD),
+        '🌈',
+      );
     }
   }
 
-  void _showThemePopup(String title, String message, Color accentColor, String emoji) {
+  void _showThemePopup(
+    String title,
+    String message,
+    Color accentColor,
+    String emoji,
+  ) {
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) {
         showDialog(
@@ -285,10 +298,7 @@ class _ChatScreenState extends State<ChatScreen>
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: accentColor,
-                  width: 2,
-                ),
+                border: Border.all(color: accentColor, width: 2),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.1),
@@ -310,10 +320,7 @@ class _ChatScreenState extends State<ChatScreen>
                     ),
                     child: Row(
                       children: [
-                        Text(
-                          emoji,
-                          style: const TextStyle(fontSize: 32),
-                        ),
+                        Text(emoji, style: const TextStyle(fontSize: 32)),
                         const SizedBox(width: 16),
                         Expanded(
                           child: Text(
@@ -330,10 +337,7 @@ class _ChatScreenState extends State<ChatScreen>
                     ),
                   ),
                   // Divider
-                  Divider(
-                    color: accentColor.withOpacity(0.2),
-                    height: 1,
-                  ),
+                  Divider(color: accentColor.withOpacity(0.2), height: 1),
                   // Content
                   Padding(
                     padding: const EdgeInsets.all(20),
@@ -387,10 +391,7 @@ class _ChatScreenState extends State<ChatScreen>
                   ),
                   // Action buttons
                   Padding(
-                    padding: const EdgeInsets.only(
-                      right: 20,
-                      bottom: 16,
-                    ),
+                    padding: const EdgeInsets.only(right: 20, bottom: 16),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -485,430 +486,306 @@ class _ChatScreenState extends State<ChatScreen>
           ),
           // Main content
           Column(
-        children: [
-          // Professional Header with Gradient
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  _currentPrimaryColor,
-                  _currentAccentColor,
-                  _currentAccentColor,
-                ],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: _currentAccentColor.withOpacity(0.25),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
-                child: Row(
-                  children: [
-                    // Guide Avatar with Animation
-                    Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: isApiHealthy
-                              ? [Colors.greenAccent, Colors.greenAccent.shade700]
-                              : [Colors.redAccent, Colors.redAccent.shade700],
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: isApiHealthy
-                                ? Colors.greenAccent.withOpacity(0.4)
-                                : Colors.redAccent.withOpacity(0.4),
-                            blurRadius: 8,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.support_agent_rounded,
-                          color: _currentPrimaryColor,
-                          size: 28,
-                        ),
-                      ),
+            children: [
+              // Professional Header with Gradient
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      _currentPrimaryColor,
+                      _currentAccentColor,
+                      _currentAccentColor,
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _currentAccentColor.withOpacity(0.25),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                      spreadRadius: 2,
                     ),
-                    const SizedBox(width: 16),
-                    // Guide Info
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Sigiriya Guide',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 19,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.3,
+                  ],
+                ),
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+                    child: Row(
+                      children: [
+                        // Guide Avatar with Animation
+                        Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.greenAccent,
+                                Colors.greenAccent.shade700,
+                              ],
                             ),
-                          ),
-                          const SizedBox(height: 3),
-                          Row(
-                            children: [
-                              Container(
-                                width: 7,
-                                height: 7,
-                                decoration: BoxDecoration(
-                                  color: isApiHealthy
-                                      ? Colors.greenAccent
-                                      : Colors.redAccent,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: isApiHealthy
-                                          ? Colors.greenAccent.withOpacity(0.6)
-                                          : Colors.redAccent.withOpacity(0.6),
-                                      blurRadius: 6,
-                                      spreadRadius: 1.5,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                isApiHealthy
-                                    ? 'Online & Ready'
-                                    : 'Offline Mode',
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.85),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  letterSpacing: 0.2,
-                                ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.greenAccent.withOpacity(0.4),
+                                blurRadius: 8,
+                                spreadRadius: 2,
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    ),
-                    // Refresh Button with Enhanced Style
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.2),
-                          width: 1,
-                        ),
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.refresh_rounded, size: 22),
-                        color: Colors.white,
-                        onPressed: _checkApiHealth,
-                        tooltip: 'Refresh Connection',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // Connection Status Banner (if offline)
-          if (!isApiHealthy)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.orange.shade100,
-                    Colors.orange.shade50,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                border: Border(
-                  bottom: BorderSide(
-                    color: Colors.orange.shade300,
-                    width: 2,
-                  ),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.orange.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.orange[800]!.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Icon(
-                      Icons.cloud_off_rounded,
-                      color: Colors.orange[800],
-                      size: 18,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Offline Mode',
-                          style: TextStyle(
-                            color: Colors.orange[900],
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.2,
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.support_agent_rounded,
+                              color: _currentPrimaryColor,
+                              size: 28,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Check your connection. Some features may be limited.',
-                          style: TextStyle(
-                            color: Colors.orange[800],
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
+                        const SizedBox(width: 16),
+                        // Guide Info
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Sigiriya Guide',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 7,
+                                    height: 7,
+                                    decoration: BoxDecoration(
+                                      color: Colors.greenAccent,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.greenAccent.withOpacity(
+                                            0.6,
+                                          ),
+                                          blurRadius: 6,
+                                          spreadRadius: 1.5,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Online & Ready',
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.85),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.orange[800]!.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: Colors.orange[800]!.withOpacity(0.3),
-                        width: 1,
+                ),
+              ),
+
+              // Messages Area
+              Expanded(
+                child: _messages.isEmpty
+                    ? _buildEmptyState()
+                    : Column(
+                        children: [
+                          // Quick Suggestions (only show when few messages)
+                          if (_messages.length <= 1) _buildQuickSuggestions(),
+
+                          // Chat Messages
+                          Expanded(
+                            child: ListView.builder(
+                              controller: _scrollController,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              itemCount:
+                                  _messages.length + (_isLoading ? 1 : 0),
+                              itemBuilder: (context, index) {
+                                if (index == _messages.length) {
+                                  return const _TypingIndicator();
+                                }
+                                return _ChatBubble(message: _messages[index]);
+                              },
+                            ),
+                          ),
+                        ],
                       ),
+              ),
+
+              // Message Input Area
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.white, _currentBgColor],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      offset: const Offset(0, -2),
+                      blurRadius: 12,
+                      spreadRadius: 2,
                     ),
-                    child: GestureDetector(
-                      onTap: _checkApiHealth,
-                      child: Text(
-                        'Retry',
-                        style: TextStyle(
-                          color: Colors.orange[800],
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
+                  ],
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(28),
+                  ),
+                ),
+                child: SafeArea(
+                  child: Row(
+                    children: [
+                      // Emoji/Tone Button
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.purple.withOpacity(0.1),
+                              Colors.pink.withOpacity(0.1),
+                            ],
+                          ),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.purple.withOpacity(0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.emoji_emotions_outlined),
+                          color: Colors.purple,
+                          iconSize: 22,
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Emoji picker coming soon!'),
+                                duration: Duration(milliseconds: 1500),
+                              ),
+                            );
+                          },
+                          tooltip: 'Add emoji',
                         ),
                       ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+                      const SizedBox(width: 10),
 
-          // Messages Area
-          Expanded(
-            child: _messages.isEmpty
-                ? _buildEmptyState()
-                : Column(
-                    children: [
-                      // Quick Suggestions (only show when few messages)
-                      if (_messages.length <= 1) _buildQuickSuggestions(),
-
-                      // Chat Messages
+                      // Text Input with Gradient border
                       Expanded(
-                        child: ListView.builder(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFEEEEEE), Color(0xFFFAFAFA)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            border: Border.all(
+                              color: _currentAccentColor.withOpacity(0.2),
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _currentAccentColor.withOpacity(0.08),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
-                          itemCount: _messages.length + (_isLoading ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (index == _messages.length) {
-                              return const _TypingIndicator();
-                            }
-                            return _ChatBubble(message: _messages[index]);
-                          },
+                          child: TextField(
+                            controller: _chatController,
+                            decoration: InputDecoration(
+                              hintText:
+                                  'Ask about weather, crowds, best days...',
+                              hintStyle: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                              ),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 18,
+                                vertical: 12,
+                              ),
+                              isDense: true,
+                            ),
+                            textInputAction: TextInputAction.send,
+                            onSubmitted: (_) => _sendMessage(),
+                            maxLines: null,
+                            style: const TextStyle(
+                              color: Colors.black87,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+
+                      // Send Button with Enhanced Gradient
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              const Color(0xff0d2039),
+                              Colors.teal.shade600,
+                            ],
+                          ),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xff0d2039).withOpacity(0.3),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: _sendMessage,
+                            borderRadius: BorderRadius.circular(24),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Icon(
+                                _isLoading
+                                    ? Icons.hourglass_top_rounded
+                                    : Icons.send_rounded,
+                                size: 20,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ),
-          ),
-
-          // Message Input Area
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.white,
-                  _currentBgColor,
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
-                  offset: const Offset(0, -2),
-                  blurRadius: 12,
-                  spreadRadius: 2,
                 ),
-              ],
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(28),
               ),
-            ),
-            child: SafeArea(
-              child: Row(
-                children: [
-                  // Emoji/Tone Button
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.purple.withOpacity(0.1),
-                          Colors.pink.withOpacity(0.1),
-                        ],
-                      ),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.purple.withOpacity(0.2),
-                        width: 1,
-                      ),
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Icons.emoji_emotions_outlined),
-                      color: Colors.purple,
-                      iconSize: 22,
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Emoji picker coming soon!'),
-                            duration: Duration(milliseconds: 1500),
-                          ),
-                        );
-                      },
-                      tooltip: 'Add emoji',
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-
-                  // Text Input with Gradient border
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFFEEEEEE),
-                            Color(0xFFFAFAFA),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        border: Border.all(
-                          color: _currentAccentColor.withOpacity(0.2),
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _currentAccentColor.withOpacity(0.08),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: TextField(
-                        controller: _chatController,
-                        decoration: InputDecoration(
-                          hintText: 'Ask about weather, crowds, best days...',
-                          hintStyle: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 12,
-                          ),
-                          isDense: true,
-                        ),
-                        textInputAction: TextInputAction.send,
-                        onSubmitted: (_) => _sendMessage(),
-                        maxLines: null,
-                        style: const TextStyle(
-                          color: Colors.black87,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-
-                  // Send Button with Enhanced Gradient
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          const Color(0xff0d2039),
-                          Colors.teal.shade600,
-                        ],
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xff0d2039).withOpacity(0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: _sendMessage,
-                        borderRadius: BorderRadius.circular(24),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Icon(
-                            _isLoading
-                                ? Icons.hourglass_top_rounded
-                                : Icons.send_rounded,
-                            size: 20,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            ],
           ),
-        ],
-      ),
         ],
       ),
     );
@@ -980,7 +857,7 @@ class _ChatScreenState extends State<ChatScreen>
               ],
             ),
             const SizedBox(height: 32),
-            
+
             // Welcome Title
             const Text(
               'Welcome to Sigiriya Guide',
@@ -992,7 +869,7 @@ class _ChatScreenState extends State<ChatScreen>
               ),
             ),
             const SizedBox(height: 12),
-            
+
             // Subtitle with emoji
             Text(
               'Your intelligent AI companion 🏔️\nfor exploring the ancient rock fortress',
@@ -1005,7 +882,7 @@ class _ChatScreenState extends State<ChatScreen>
               ),
             ),
             const SizedBox(height: 28),
-            
+
             // Features Box
             Container(
               padding: const EdgeInsets.all(18),
@@ -1035,7 +912,7 @@ class _ChatScreenState extends State<ChatScreen>
               ),
             ),
             const SizedBox(height: 32),
-            
+
             _buildQuickSuggestions(),
           ],
         ),
@@ -1115,7 +992,7 @@ class _ChatScreenState extends State<ChatScreen>
                 Color(0xFF6A5ACD), // Indigo
                 Color(0xFFC85A54), // Red
               ];
-              
+
               return Padding(
                 padding: const EdgeInsets.only(right: 10),
                 child: Material(
@@ -1231,16 +1108,18 @@ class _ChatBubbleState extends State<_ChatBubble> {
     }
   }
 
-  Widget _buildBestDaysCard(BuildContext context, String text, {List<DateTime>? bestDays, String? monthName}) {
+  Widget _buildBestDaysCard(
+    BuildContext context,
+    String text, {
+    List<DateTime>? bestDays,
+    String? monthName,
+  }) {
     return Container(
       constraints: const BoxConstraints(maxWidth: 340),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFF9B8A30),
-          width: 2,
-        ),
+        border: Border.all(color: const Color(0xFF9B8A30), width: 2),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.08),
@@ -1257,18 +1136,12 @@ class _ChatBubbleState extends State<_ChatBubble> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               border: Border(
-                left: BorderSide(
-                  color: const Color(0xFF9B8A30),
-                  width: 4,
-                ),
+                left: BorderSide(color: const Color(0xFF9B8A30), width: 4),
               ),
             ),
             child: Row(
               children: [
-                const Text(
-                  '✨',
-                  style: TextStyle(fontSize: 28),
-                ),
+                const Text('✨', style: TextStyle(fontSize: 28)),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -1299,10 +1172,7 @@ class _ChatBubbleState extends State<_ChatBubble> {
             ),
           ),
           // Divider
-          Divider(
-            color: const Color(0xFF9B8A30).withOpacity(0.2),
-            height: 1,
-          ),
+          Divider(color: const Color(0xFF9B8A30).withOpacity(0.2), height: 1),
           // Content
           Padding(
             padding: const EdgeInsets.all(16),
@@ -1354,10 +1224,7 @@ class _ChatBubbleState extends State<_ChatBubble> {
                 },
                 style: TextButton.styleFrom(
                   foregroundColor: const Color(0xFF6B5414),
-                  side: const BorderSide(
-                    color: Color(0xFF9B8A30),
-                    width: 1.5,
-                  ),
+                  side: const BorderSide(color: Color(0xFF9B8A30), width: 1.5),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -1365,10 +1232,7 @@ class _ChatBubbleState extends State<_ChatBubble> {
                 ),
                 child: const Text(
                   '📅 View Calendar',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                 ),
               ),
             ),
@@ -1380,17 +1244,14 @@ class _ChatBubbleState extends State<_ChatBubble> {
 
   Widget _buildHourlyWeatherCard(BuildContext context, String text) {
     // Extract hourly weather data from response text
-    
+
     return Container(
       constraints: const BoxConstraints(maxWidth: 320),
       margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFF2E7CB8),
-          width: 2,
-        ),
+        border: Border.all(color: const Color(0xFF2E7CB8), width: 2),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.08),
@@ -1410,15 +1271,16 @@ class _ChatBubbleState extends State<_ChatBubble> {
             decoration: BoxDecoration(
               color: const Color(0xFF2E7CB8).withOpacity(0.1),
               border: const Border(
-                bottom: BorderSide(
-                  color: Color(0xFF2E7CB8),
-                  width: 2,
-                ),
+                bottom: BorderSide(color: Color(0xFF2E7CB8), width: 2),
               ),
             ),
             child: Row(
               children: const [
-                Icon(Icons.access_time_rounded, color: Color(0xFF2E7CB8), size: 20),
+                Icon(
+                  Icons.access_time_rounded,
+                  color: Color(0xFF2E7CB8),
+                  size: 20,
+                ),
                 SizedBox(width: 8),
                 Text(
                   '🕐 Real-Time Hourly Weather',
@@ -1436,9 +1298,7 @@ class _ChatBubbleState extends State<_ChatBubble> {
             scrollDirection: Axis.horizontal,
             child: Padding(
               padding: const EdgeInsets.all(12),
-              child: Row(
-                children: _buildHourlyItems(text),
-              ),
+              child: Row(children: _buildHourlyItems(text)),
             ),
           ),
           // Footer info
@@ -1448,10 +1308,7 @@ class _ChatBubbleState extends State<_ChatBubble> {
             decoration: BoxDecoration(
               color: const Color(0xFF2E7CB8).withOpacity(0.05),
               border: const Border(
-                top: BorderSide(
-                  color: Color(0xFF2E7CB8),
-                  width: 1,
-                ),
+                top: BorderSide(color: Color(0xFF2E7CB8), width: 1),
               ),
             ),
             child: const Text(
@@ -1472,7 +1329,7 @@ class _ChatBubbleState extends State<_ChatBubble> {
     // Parse the hourly weather text and create card items
     final items = <Widget>[];
     final lines = text.split('\n');
-    
+
     // Extract hourly data blocks (each hour starts with ⏰)
     int hourCount = 0;
     for (int i = 0; i < lines.length && hourCount < 4; i++) {
@@ -1482,11 +1339,12 @@ class _ChatBubbleState extends State<_ChatBubble> {
           final time = timeMatch.group(1)?.trim() ?? '';
           final tempLine = lines[i + 1];
           final rainfallLine = lines[i + 3];
-          
+
           final tempEmoji = tempLine.contains('🌡️') ? '🌡️' : '☀️';
-          final tempValue = RegExp(r'(\d+\.?\d*)°C').firstMatch(tempLine)?.group(1) ?? '';
+          final tempValue =
+              RegExp(r'(\d+\.?\d*)°C').firstMatch(tempLine)?.group(1) ?? '';
           const Color itemColor = Color(0xFF2E7CB8);
-          
+
           items.add(
             Container(
               width: 70,
@@ -1526,10 +1384,7 @@ class _ChatBubbleState extends State<_ChatBubble> {
                   if (rainfallLine.contains('☔') || rainfallLine.contains('✅'))
                     Text(
                       rainfallLine.contains('✅') ? '✅ No Rain' : '☔ Rain',
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey,
-                      ),
+                      style: const TextStyle(fontSize: 10, color: Colors.grey),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1542,7 +1397,7 @@ class _ChatBubbleState extends State<_ChatBubble> {
         }
       }
     }
-    
+
     return items.isNotEmpty
         ? items
         : [
@@ -1566,10 +1421,7 @@ class _ChatBubbleState extends State<_ChatBubble> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          emoji,
-          style: const TextStyle(fontSize: 24),
-        ),
+        Text(emoji, style: const TextStyle(fontSize: 24)),
         const SizedBox(height: 4),
         Text(
           label,
@@ -1612,12 +1464,14 @@ class _ChatBubbleState extends State<_ChatBubble> {
   Widget build(BuildContext context) {
     final message = widget.message;
     // Check if message contains best days info
-    bool isBestDaysMessage = message.text.toLowerCase().contains('best') &&
+    bool isBestDaysMessage =
+        message.text.toLowerCase().contains('best') &&
         (message.text.toLowerCase().contains('day') ||
             message.text.toLowerCase().contains('visit'));
-    
+
     // Check if message is hourly weather (real-time)
-    bool isHourlyWeatherMessage = message.text.toLowerCase().contains('hourly') &&
+    bool isHourlyWeatherMessage =
+        message.text.toLowerCase().contains('hourly') &&
         message.text.toLowerCase().contains('weather') &&
         message.text.toLowerCase().contains('sigiriya');
 
@@ -1664,22 +1518,22 @@ class _ChatBubbleState extends State<_ChatBubble> {
                     monthName: message.targetMonth,
                   )
                 : isHourlyWeatherMessage && !message.isUser
-                    ? _buildHourlyWeatherCard(context, message.text)
-                    : Container(
+                ? _buildHourlyWeatherCard(context, message.text)
+                : Container(
                     constraints: const BoxConstraints(maxWidth: 300),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
-                      color: message.isUser 
+                      color: message.isUser
                           ? const Color(0xFF2E7CB8)
                           : Colors.white,
                       borderRadius: BorderRadius.only(
                         topLeft: const Radius.circular(16),
                         topRight: const Radius.circular(16),
-                        bottomLeft:
-                            Radius.circular(message.isUser ? 16 : 4),
-                        bottomRight:
-                            Radius.circular(message.isUser ? 4 : 16),
+                        bottomLeft: Radius.circular(message.isUser ? 16 : 4),
+                        bottomRight: Radius.circular(message.isUser ? 4 : 16),
                       ),
                       boxShadow: [
                         BoxShadow(
@@ -1705,7 +1559,7 @@ class _ChatBubbleState extends State<_ChatBubble> {
                             Icon(
                               Icons.access_time_rounded,
                               size: 10,
-                              color: message.isUser 
+                              color: message.isUser
                                   ? Colors.white.withOpacity(0.7)
                                   : Colors.grey[500],
                             ),
@@ -1713,7 +1567,7 @@ class _ChatBubbleState extends State<_ChatBubble> {
                             Text(
                               _formatTime(message.timestamp),
                               style: TextStyle(
-                                color: message.isUser 
+                                color: message.isUser
                                     ? Colors.white.withOpacity(0.7)
                                     : Colors.grey[500],
                                 fontSize: 11,
@@ -1770,7 +1624,6 @@ class _ChatBubbleState extends State<_ChatBubble> {
   }
 }
 
-
 class _TypingIndicator extends StatelessWidget {
   const _TypingIndicator();
 
@@ -1816,10 +1669,7 @@ class _TypingIndicator extends StatelessWidget {
                 bottomLeft: Radius.circular(3),
                 bottomRight: Radius.circular(12),
               ),
-              border: Border.all(
-                color: Colors.grey[300]!,
-                width: 1.2,
-              ),
+              border: Border.all(color: Colors.grey[300]!, width: 1.2),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.05),
@@ -1901,16 +1751,14 @@ class _DotState extends State<_Dot> with SingleTickerProviderStateMixin {
     );
   }
 }
+
 // Calendar View Dialog for Best Days
 class CalendarViewDialog extends StatefulWidget {
   final List<DateTime> bestDays;
   final String? monthName;
 
-  const CalendarViewDialog({
-    required this.bestDays,
-    this.monthName,
-    Key? key,
-  }) : super(key: key);
+  const CalendarViewDialog({required this.bestDays, this.monthName, Key? key})
+    : super(key: key);
 
   @override
   State<CalendarViewDialog> createState() => _CalendarViewDialogState();
@@ -1945,9 +1793,7 @@ class _CalendarViewDialogState extends State<CalendarViewDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       insetPadding: const EdgeInsets.all(16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Container(
         color: Colors.white,
         child: SingleChildScrollView(
@@ -2001,9 +1847,10 @@ class _CalendarViewDialogState extends State<CalendarViewDialog> {
                     ),
                   ),
                   child: Text(
-                    displayMonth.toString().split(' ')[0] == '' 
-                      ? widget.monthName ?? displayMonth.toString().split(' ')[0]
-                      : '${_getMonthName(displayMonth.month)} ${displayMonth.year}',
+                    displayMonth.toString().split(' ')[0] == ''
+                        ? widget.monthName ??
+                              displayMonth.toString().split(' ')[0]
+                        : '${_getMonthName(displayMonth.month)} ${displayMonth.year}',
                     style: const TextStyle(
                       color: Color(0xFF6B5414),
                       fontSize: 16,
@@ -2033,15 +1880,9 @@ class _CalendarViewDialogState extends State<CalendarViewDialog> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          _buildLegendItem(
-                            Colors.green,
-                            'Best Days',
-                          ),
+                          _buildLegendItem(Colors.green, 'Best Days'),
                           const SizedBox(width: 24),
-                          _buildLegendItem(
-                            Colors.grey.shade300,
-                            'Other Days',
-                          ),
+                          _buildLegendItem(Colors.grey.shade300, 'Other Days'),
                         ],
                       ),
                       const SizedBox(height: 12),
@@ -2094,14 +1935,18 @@ class _CalendarViewDialogState extends State<CalendarViewDialog> {
 
   Widget _buildCalendarGrid() {
     List<String> weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    
+
     // Get first day of month
     DateTime firstDay = DateTime(displayMonth.year, displayMonth.month, 1);
-    int daysInMonth = DateTime(displayMonth.year, displayMonth.month + 1, 0).day;
+    int daysInMonth = DateTime(
+      displayMonth.year,
+      displayMonth.month + 1,
+      0,
+    ).day;
     int startingWeekday = firstDay.weekday % 7;
-    
+
     List<Widget> dayWidgets = [];
-    
+
     // Week day headers
     for (String day in weekDays) {
       dayWidgets.add(
@@ -2119,19 +1964,20 @@ class _CalendarViewDialogState extends State<CalendarViewDialog> {
         ),
       );
     }
-    
+
     // Empty cells before month starts
     for (int i = 0; i < startingWeekday; i++) {
       dayWidgets.add(const SizedBox.shrink());
     }
-    
+
     // Days of month
     for (int day = 1; day <= daysInMonth; day++) {
       DateTime date = DateTime(displayMonth.year, displayMonth.month, day);
       bool isBestDay = widget.bestDays.any(
-        (d) => d.year == date.year && d.month == date.month && d.day == date.day,
+        (d) =>
+            d.year == date.year && d.month == date.month && d.day == date.day,
       );
-      
+
       dayWidgets.add(
         Container(
           margin: const EdgeInsets.all(4),
@@ -2139,20 +1985,17 @@ class _CalendarViewDialogState extends State<CalendarViewDialog> {
             color: isBestDay ? Colors.green.shade400 : Colors.grey.shade100,
             borderRadius: BorderRadius.circular(8),
             border: isBestDay
-              ? Border.all(
-                  color: Colors.green.shade600,
-                  width: 2,
-                )
-              : null,
+                ? Border.all(color: Colors.green.shade600, width: 2)
+                : null,
             boxShadow: isBestDay
-              ? [
-                  BoxShadow(
-                    color: Colors.green.shade400.withOpacity(0.4),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
+                ? [
+                    BoxShadow(
+                      color: Colors.green.shade400.withOpacity(0.4),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
           ),
           child: Center(
             child: Text(
@@ -2167,7 +2010,7 @@ class _CalendarViewDialogState extends State<CalendarViewDialog> {
         ),
       );
     }
-    
+
     return GridView.count(
       crossAxisCount: 7,
       shrinkWrap: true,
@@ -2189,8 +2032,8 @@ class _CalendarViewDialogState extends State<CalendarViewDialog> {
             borderRadius: BorderRadius.circular(4),
             border: Border.all(
               color: color == Colors.green
-                ? Colors.green.shade600
-                : Colors.grey.shade400,
+                  ? Colors.green.shade600
+                  : Colors.grey.shade400,
               width: 1.5,
             ),
           ),
@@ -2210,8 +2053,18 @@ class _CalendarViewDialogState extends State<CalendarViewDialog> {
 
   String _getMonthName(int month) {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     return months[month - 1];
   }

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'admin_dashboard.dart';
+import 'config/api_config.dart';
 
 class AdminRegisterScreen extends StatefulWidget {
   const AdminRegisterScreen({super.key});
@@ -21,7 +22,7 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
-  static const String apiBaseUrl = 'http://10.0.2.2:8000';
+  static const String apiBaseUrl = ApiConfig.baseUrl;
 
   @override
   void dispose() {

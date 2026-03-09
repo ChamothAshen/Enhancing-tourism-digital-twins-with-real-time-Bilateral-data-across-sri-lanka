@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:fl_chart/fl_chart.dart';
 import 'admin_login_screen.dart';
+import 'config/api_config.dart';
 
 class AdminDashboard extends StatefulWidget {
   final Map<String, dynamic> adminData;
@@ -20,21 +21,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Map<String, dynamic> _dashboardStats = {};
   List<dynamic> _weeklyForecast = [];
   List<dynamic> _weatherData = [];
-  Map<String, dynamic> _monthlyForecast = {}; // Store monthly data from XGBoost model
+  Map<String, dynamic> _monthlyForecast =
+      {}; // Store monthly data from XGBoost model
   bool _isLoadingStats = true;
-  
+
   // Feature 3: Custom Date Range Selector
   DateTime _selectedStartDate = DateTime(2026, 1, 1);
   DateTime _selectedEndDate = DateTime(2026, 12, 31);
-  
+
   // Facility Capacity
   int _facilityCapacity = 0;
-  
+
   // Alerts Management
   List<Map<String, dynamic>> _alerts = [];
   bool _showAlertPopup = false;
-  
-  static const String apiBaseUrl = 'http://10.0.2.2:8000';
+
+  static const String apiBaseUrl = ApiConfig.baseUrl;
 
   @override
   void initState() {
@@ -59,13 +61,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
       }
 
       // Fallback: Try API endpoint
-      final response = await http.get(
-        Uri.parse('$apiBaseUrl/admin/capacity'),
-        headers: {
-          'Authorization': 'Bearer ${widget.adminData['token']}',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(
+            Uri.parse('$apiBaseUrl/admin/capacity'),
+            headers: {
+              'Authorization': 'Bearer ${widget.adminData['token']}',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         try {
@@ -126,7 +130,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
-  int get _unreadAlertsCount => _alerts.where((alert) => alert['isRead'] != true).length;
+  int get _unreadAlertsCount =>
+      _alerts.where((alert) => alert['isRead'] != true).length;
 
   IconData _getAlertIcon(Map<String, dynamic> alert) {
     final icon = alert['icon'];
@@ -150,7 +155,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
     if (todayVisitors > 1000) {
       generatedAlerts.add({
         'title': 'High Crowd Alert',
-        'message': 'Expected visitors: $todayVisitors today. Prepare additional staff.',
+        'message':
+            'Expected visitors: $todayVisitors today. Prepare additional staff.',
         'icon': Icons.people,
         'color': todayVisitors > 1500 ? Colors.red : Colors.orange,
         'isRead': false,
@@ -162,7 +168,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
     if (todayVisitors > 1500) {
       generatedAlerts.add({
         'title': 'Exceeding Safe Visitor Limit',
-        'message': 'Expected visitors ($todayVisitors) exceed safe daily limit (1500). Prepare crowd management and extra staff.',
+        'message':
+            'Expected visitors ($todayVisitors) exceed safe daily limit (1500). Prepare crowd management and extra staff.',
         'icon': Icons.warning_amber_rounded,
         'color': Colors.red,
         'isRead': false,
@@ -202,7 +209,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       if (temp > 24) {
         generatedAlerts.add({
           'title': 'HEAT Alert',
-          'message': 'Temperature ${temp.toStringAsFixed(1)}°C. Increase water stations and shaded rest areas.',
+          'message':
+              'Temperature ${temp.toStringAsFixed(1)}°C. Increase water stations and shaded rest areas.',
           'icon': Icons.wb_sunny,
           'color': Colors.deepOrange,
           'isRead': false,
@@ -214,7 +222,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       if (temp > 33) {
         generatedAlerts.add({
           'title': 'Extreme Heat Warning',
-          'message': 'Temperature ${temp.toStringAsFixed(1)}°C - Critical heat alert. Mandatory staff breaks and hydration.',
+          'message':
+              'Temperature ${temp.toStringAsFixed(1)}°C - Critical heat alert. Mandatory staff breaks and hydration.',
           'icon': Icons.thermostat,
           'color': Colors.red,
           'isRead': false,
@@ -226,7 +235,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       if (rainfall > 5) {
         generatedAlerts.add({
           'title': 'Rain Warning',
-          'message': 'Rainfall expected: ${rainfall.toStringAsFixed(1)}mm. Prepare indoor facilities and covered areas.',
+          'message':
+              'Rainfall expected: ${rainfall.toStringAsFixed(1)}mm. Prepare indoor facilities and covered areas.',
           'icon': Icons.cloud_queue,
           'color': Colors.blue,
           'isRead': false,
@@ -238,7 +248,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       if (rainfall > 50) {
         generatedAlerts.add({
           'title': 'Heavy Rain Alert',
-          'message': 'Heavy rainfall forecasted: ${rainfall.toStringAsFixed(1)}mm. Close outdoor attractions if needed.',
+          'message':
+              'Heavy rainfall forecasted: ${rainfall.toStringAsFixed(1)}mm. Close outdoor attractions if needed.',
           'icon': Icons.opacity,
           'color': Colors.indigo,
           'isRead': false,
@@ -250,7 +261,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       if (windSpeed > 8) {
         generatedAlerts.add({
           'title': 'High Wind Warning',
-          'message': 'Wind speed: ${windSpeed.toStringAsFixed(1)} m/s. Secure loose items and monitor visitor safety.',
+          'message':
+              'Wind speed: ${windSpeed.toStringAsFixed(1)} m/s. Secure loose items and monitor visitor safety.',
           'icon': Icons.air,
           'color': Colors.amber,
           'isRead': false,
@@ -262,7 +274,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       if (windSpeed > 15) {
         generatedAlerts.add({
           'title': 'Extreme Wind Alert',
-          'message': 'Dangerous wind: ${windSpeed.toStringAsFixed(1)} m/s. Restrict outdoor movement and activities.',
+          'message':
+              'Dangerous wind: ${windSpeed.toStringAsFixed(1)} m/s. Restrict outdoor movement and activities.',
           'icon': Icons.storm,
           'color': Colors.red,
           'isRead': false,
@@ -282,12 +295,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     if (!mounted || _alerts.isEmpty) return;
 
     setState(() {
-      _alerts = _alerts
-          .map((alert) => {
-                ...alert,
-                'isRead': true,
-              })
-          .toList();
+      _alerts = _alerts.map((alert) => {...alert, 'isRead': true}).toList();
     });
   }
 
@@ -332,7 +340,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     decoration: BoxDecoration(
                       color: color.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+                      border: Border.all(
+                        color: color.withOpacity(0.3),
+                        width: 1.5,
+                      ),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -422,7 +433,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     decoration: BoxDecoration(
                       color: color.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+                      border: Border.all(
+                        color: color.withOpacity(0.3),
+                        width: 1.5,
+                      ),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -524,13 +538,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Future<void> _loadForecastData() async {
     try {
       // Try new analytics endpoint first
-      final response = await http.get(
-        Uri.parse('$apiBaseUrl/admin/daily-analytics?limit=90'),
-        headers: {
-          'Authorization': 'Bearer ${widget.adminData['token']}',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .get(
+            Uri.parse('$apiBaseUrl/admin/daily-analytics?limit=90'),
+            headers: {
+              'Authorization': 'Bearer ${widget.adminData['token']}',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         try {
@@ -548,15 +564,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
           print('✗ Error parsing daily analytics: $e');
         }
       }
-      
+
       // Fallback to old forecast endpoint
-      final fallbackResponse = await http.get(
-        Uri.parse('$apiBaseUrl/forecast?limit=90&year=2026'),
-        headers: {
-          'Authorization': 'Bearer ${widget.adminData['token']}',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 15));
+      final fallbackResponse = await http
+          .get(
+            Uri.parse('$apiBaseUrl/forecast?limit=90&year=2026'),
+            headers: {
+              'Authorization': 'Bearer ${widget.adminData['token']}',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (fallbackResponse.statusCode == 200) {
         try {
@@ -570,9 +588,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 return {
                   'date': item['date'] ?? '',
                   'day': item['day'] ?? 'Unknown',
-                  'visitors': item['forecast_visitor_count'] ?? item['visitors'] ?? 0,
+                  'visitors':
+                      item['forecast_visitor_count'] ?? item['visitors'] ?? 0,
                   'temperature': 28,
-                  'crowd_level': 'Moderate'
+                  'crowd_level': 'Moderate',
                 };
               }
               return item;
@@ -591,7 +610,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
           }
         } catch (e) {
           print('✗ Error parsing forecast: $e');
-          print('Raw body: ${fallbackResponse.body.substring(0, min(500, fallbackResponse.body.length))}');
+          print(
+            'Raw body: ${fallbackResponse.body.substring(0, min(500, fallbackResponse.body.length))}',
+          );
         }
       } else {
         print('✗ Forecast API error: ${fallbackResponse.statusCode}');
@@ -599,7 +620,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     } catch (e) {
       print('✗ Error loading forecast: $e');
     }
-    
+
     // Fallback: Generate synthetic forecast data
     print('⚠ Using synthetic forecast data');
     final syntheticForecast = _generateSyntheticForecast();
@@ -613,23 +634,25 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Future<void> _loadMonthlyForecast() async {
     try {
       // Try new monthly analytics endpoint first
-      final response = await http.get(
-        Uri.parse('$apiBaseUrl/admin/monthly-analytics?year=2026'),
-        headers: {
-          'Authorization': 'Bearer ${widget.adminData['token']}',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .get(
+            Uri.parse('$apiBaseUrl/admin/monthly-analytics?year=2026'),
+            headers: {
+              'Authorization': 'Bearer ${widget.adminData['token']}',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         try {
           final data = json.decode(response.body);
           print('✓ Monthly Analytics API Success: ${data.runtimeType}');
-          
+
           if (data is List && data.isNotEmpty) {
             print('✓ Monthly data is List with ${data.length} items');
             print('✓ First item: ${data.first}');
-            
+
             // Convert list to map for easier access by month name
             Map<String, int> monthlyMap = {};
             for (var item in data) {
@@ -640,7 +663,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 print('✓ Month: $monthName → $avgVisitors visitors');
               }
             }
-            
+
             setState(() {
               _monthlyForecast = monthlyMap;
             });
@@ -649,29 +672,33 @@ class _AdminDashboardState extends State<AdminDashboard> {
           }
         } catch (e) {
           print('✗ Error parsing monthly analytics: $e');
-          print('Raw response: ${response.body.substring(0, min(500, response.body.length))}');
+          print(
+            'Raw response: ${response.body.substring(0, min(500, response.body.length))}',
+          );
         }
       } else {
         print('✗ Monthly Analytics API error: ${response.statusCode}');
       }
-      
+
       // Fallback: Try old monthly forecast endpoint
-      final fallbackResponse = await http.get(
-        Uri.parse('$apiBaseUrl/forecast/monthly?year=2026'),
-        headers: {
-          'Authorization': 'Bearer ${widget.adminData['token']}',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 15));
+      final fallbackResponse = await http
+          .get(
+            Uri.parse('$apiBaseUrl/forecast/monthly?year=2026'),
+            headers: {
+              'Authorization': 'Bearer ${widget.adminData['token']}',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (fallbackResponse.statusCode == 200) {
         try {
           final data = json.decode(fallbackResponse.body);
           print('✓ Monthly Forecast API Success: ${data.runtimeType}');
-          
+
           if (data is List && data.isNotEmpty) {
             print('✓ Monthly data is List with ${data.length} items');
-            
+
             // Convert list to map
             Map<String, int> monthlyMap = {};
             for (var item in data) {
@@ -679,7 +706,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 monthlyMap[item['month'] ?? ''] = item['average_visitors'] ?? 0;
               }
             }
-            
+
             setState(() {
               _monthlyForecast = monthlyMap;
             });
@@ -692,15 +719,25 @@ class _AdminDashboardState extends State<AdminDashboard> {
     } catch (e) {
       print('✗ Error loading monthly forecast: $e');
     }
-    
+
     // Fallback: Generate synthetic monthly data with variation
     print('⚠ Generating synthetic monthly data with variation');
     final monthNames = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     final syntheticMonthly = <String, int>{};
-    
+
     // Create varying visitor patterns by month
     for (int i = 0; i < monthNames.length; i++) {
       // Peak seasons: January, July, August, December (holidays)
@@ -712,7 +749,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       }
       syntheticMonthly[monthNames[i]] = baseVisitors + Random().nextInt(500);
     }
-    
+
     setState(() {
       _monthlyForecast = syntheticMonthly;
     });
@@ -722,11 +759,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
   List<Map<String, dynamic>> _generateSyntheticForecast() {
     final now = DateTime.now();
     final forecast = <Map<String, dynamic>>[];
-    
+
     for (int i = 0; i < 90; i++) {
       final date = now.add(Duration(days: i));
       final baseVisitors = 3200 + (i % 20) * 150;
-      
+
       forecast.add({
         'date': date.toString().split(' ')[0],
         'visitors': baseVisitors,
@@ -734,7 +771,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         'upper_bound': (baseVisitors * 1.15).toInt(),
       });
     }
-    
+
     return forecast;
   }
 
@@ -780,8 +817,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Map<String, int> _getMonthlyAggregates(List<dynamic> forecast) {
     Map<String, int> monthlyData = {};
     final monthNames = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
 
     if (forecast.isEmpty) {
@@ -803,16 +850,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
     for (int i = 0; i < forecast.length; i++) {
       try {
         final visitors = _getCrowdValue(forecast[i]);
-        
+
         // Determine the date (assume forecast starts from today)
         DateTime currentDate = DateTime.now().add(Duration(days: i));
         int monthIndex = currentDate.month - 1;
-        
+
         // Initialize month data if not exists
         if (!monthVisitors.containsKey(monthIndex)) {
           monthVisitors[monthIndex] = [];
         }
-        
+
         monthVisitors[monthIndex]!.add(visitors);
       } catch (e) {
         print('Error processing monthly data: $e');
@@ -835,13 +882,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Future<void> _loadWeatherData() async {
     try {
-      final response = await http.get(
-        Uri.parse('$apiBaseUrl/weather_forecast?limit=30'),
-        headers: {
-          'Authorization': 'Bearer ${widget.adminData['token']}',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .get(
+            Uri.parse('$apiBaseUrl/weather_forecast?limit=30'),
+            headers: {
+              'Authorization': 'Bearer ${widget.adminData['token']}',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         try {
@@ -863,7 +912,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
           }
         } catch (e) {
           print('✗ Error parsing weather: $e');
-          print('Raw body: ${response.body.substring(0, min(500, response.body.length))}');
+          print(
+            'Raw body: ${response.body.substring(0, min(500, response.body.length))}',
+          );
         }
       } else {
         print('✗ Weather API error: ${response.statusCode}');
@@ -871,7 +922,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     } catch (e) {
       print('✗ Error loading weather: $e');
     }
-    
+
     // Fallback: Generate synthetic weather data
     print('⚠ Using synthetic weather data');
     final syntheticWeather = _generateSyntheticWeather();
@@ -885,12 +936,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
   List<Map<String, dynamic>> _generateSyntheticWeather() {
     final now = DateTime.now();
     final weather = <Map<String, dynamic>>[];
-    final conditions = ['Sunny', 'Partly Cloudy', 'Cloudy', 'Light Rain', 'Rainy'];
-    
+    final conditions = [
+      'Sunny',
+      'Partly Cloudy',
+      'Cloudy',
+      'Light Rain',
+      'Rainy',
+    ];
+
     for (int i = 0; i < 30; i++) {
       final date = now.add(Duration(days: i));
       final temp = 26.0 + (i % 10) * 1.5 - 4;
-      
+
       weather.add({
         'date': date.toString().split(' ')[0],
         'temperature': temp,
@@ -899,15 +956,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
         'condition': conditions[i % conditions.length],
       });
     }
-    
+
     return weather;
   }
 
   void _handleLogout() {
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (context) => const AdminLoginScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const AdminLoginScreen()),
     );
   }
 
@@ -920,19 +975,35 @@ class _AdminDashboardState extends State<AdminDashboard> {
         return;
       }
 
-      StringBuffer csv = StringBuffer('Date,Predicted Visitors,Lower Bound,Upper Bound\n');
-      
+      StringBuffer csv = StringBuffer(
+        'Date,Predicted Visitors,Lower Bound,Upper Bound\n',
+      );
+
       for (var item in _weeklyForecast) {
         try {
           // Handle various field name formats
           final date = item['date'] ?? item['ds'] ?? '';
-          final visitors = item['visitors'] ?? item['yhat'] ?? item['expected_visitors'] ?? 0;
+          final visitors =
+              item['visitors'] ??
+              item['yhat'] ??
+              item['expected_visitors'] ??
+              0;
           final visitorsInt = _safeToInt(visitors, 0);
-          final lowerBound = item['lower_bound'] ?? item['yhat_lower'] ?? visitorsInt * 0.8 ?? 0;
-          final upperBound = item['upper_bound'] ?? item['yhat_upper'] ?? visitorsInt * 1.2 ?? 0;
-          
+          final lowerBound =
+              item['lower_bound'] ??
+              item['yhat_lower'] ??
+              visitorsInt * 0.8 ??
+              0;
+          final upperBound =
+              item['upper_bound'] ??
+              item['yhat_upper'] ??
+              visitorsInt * 1.2 ??
+              0;
+
           if (date.toString().isNotEmpty) {
-            csv.writeln('$date,${visitors ?? 0},${(lowerBound as num).toStringAsFixed(0)},${(upperBound as num).toStringAsFixed(0)}');
+            csv.writeln(
+              '$date,${visitors ?? 0},${(lowerBound as num).toStringAsFixed(0)},${(upperBound as num).toStringAsFixed(0)}',
+            );
           }
         } catch (e) {
           print('Error parsing item: $e, item: $item');
@@ -943,9 +1014,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
       _showCSVDialog('Crowd Data Export', csv.toString());
     } catch (e) {
       print('Error exporting: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error exporting data: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error exporting data: $e')));
     }
   }
 
@@ -990,16 +1061,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
         return;
       }
 
-      StringBuffer csv = StringBuffer('Date,Temperature (°C),Rainfall (mm),Wind Speed (m/s),Condition\n');
-      
+      StringBuffer csv = StringBuffer(
+        'Date,Temperature (°C),Rainfall (mm),Wind Speed (m/s),Condition\n',
+      );
+
       for (var item in _weatherData) {
         try {
           final date = item['date'] ?? item['dt'] ?? '';
           final temp = (item['temperature'] ?? item['temp'] ?? 0).toString();
           final rain = (item['rainfall'] ?? item['rain'] ?? 0).toString();
           final wind = (item['wind_speed'] ?? 0).toString();
-          final condition = (item['condition'] ?? item['description'] ?? 'N/A').toString();
-          
+          final condition = (item['condition'] ?? item['description'] ?? 'N/A')
+              .toString();
+
           if (date.toString().isNotEmpty) {
             csv.writeln('$date,$temp,$rain,$wind,$condition');
           }
@@ -1012,9 +1086,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
       _showCSVDialog('Weather Data Export', csv.toString());
     } catch (e) {
       print('Error exporting: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error exporting data: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error exporting data: $e')));
     }
   }
 
@@ -1107,22 +1181,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const CircularProgressIndicator(
-                          strokeWidth: 3,
-                        ),
+                        const CircularProgressIndicator(strokeWidth: 3),
                         const SizedBox(height: 16),
                         Text(
                           'Loading Dashboard Data...',
-                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: Theme.of(context).textTheme.bodyLarge
+                              ?.copyWith(fontWeight: FontWeight.w600),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'Please wait while we fetch the latest information',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey[600],
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: Colors.grey[600]),
                           textAlign: TextAlign.center,
                         ),
                       ],
@@ -1141,13 +1211,48 @@ class _AdminDashboardState extends State<AdminDashboard> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildNavTab('Dashboard', Icons.dashboard_outlined, Icons.dashboard, 0),
-              _buildNavTab('Analytics', Icons.analytics_outlined, Icons.analytics, 1),
-              _buildNavTab('Seasons', Icons.calendar_month_outlined, Icons.calendar_month, 2),
-              _buildNavTab('Capacity', Icons.storage_outlined, Icons.storage, 3),
-              _buildNavTab('Custom', Icons.assessment_outlined, Icons.assessment, 4),
-              _buildNavTab('Reports', Icons.description_outlined, Icons.description, 5),
-              _buildNavTab('Settings', Icons.settings_outlined, Icons.settings, 6),
+              _buildNavTab(
+                'Dashboard',
+                Icons.dashboard_outlined,
+                Icons.dashboard,
+                0,
+              ),
+              _buildNavTab(
+                'Analytics',
+                Icons.analytics_outlined,
+                Icons.analytics,
+                1,
+              ),
+              _buildNavTab(
+                'Seasons',
+                Icons.calendar_month_outlined,
+                Icons.calendar_month,
+                2,
+              ),
+              _buildNavTab(
+                'Capacity',
+                Icons.storage_outlined,
+                Icons.storage,
+                3,
+              ),
+              _buildNavTab(
+                'Custom',
+                Icons.assessment_outlined,
+                Icons.assessment,
+                4,
+              ),
+              _buildNavTab(
+                'Reports',
+                Icons.description_outlined,
+                Icons.description,
+                5,
+              ),
+              _buildNavTab(
+                'Settings',
+                Icons.settings_outlined,
+                Icons.settings,
+                6,
+              ),
             ],
           ),
         ),
@@ -1155,13 +1260,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildNavTab(String label, IconData outlineIcon, IconData filledIcon, int index) {
+  Widget _buildNavTab(
+    String label,
+    IconData outlineIcon,
+    IconData filledIcon,
+    int index,
+  ) {
     return GestureDetector(
       onTap: () => setState(() => _selectedIndex = index),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: _selectedIndex == index ? Colors.blue.shade100 : Colors.transparent,
+          color: _selectedIndex == index
+              ? Colors.blue.shade100
+              : Colors.transparent,
           border: Border(
             bottom: BorderSide(
               color: _selectedIndex == index ? Colors.blue : Colors.transparent,
@@ -1184,7 +1296,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
               style: TextStyle(
                 color: _selectedIndex == index ? Colors.blue : Colors.grey,
                 fontSize: 10,
-                fontWeight: _selectedIndex == index ? FontWeight.bold : FontWeight.normal,
+                fontWeight: _selectedIndex == index
+                    ? FontWeight.bold
+                    : FontWeight.normal,
               ),
             ),
           ],
@@ -1207,9 +1321,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
           children: [
             Text(
               'Dashboard',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
 
@@ -1229,7 +1343,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [Colors.orange.shade300, Colors.orange.shade600],
+                        colors: [
+                          Colors.orange.shade300,
+                          Colors.orange.shade600,
+                        ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -1254,7 +1371,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  _formatWeatherValue(todayWeather['temperature']) + '°C',
+                                  _formatWeatherValue(
+                                        todayWeather['temperature'],
+                                      ) +
+                                      '°C',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 36,
@@ -1294,7 +1414,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                     ),
                                   ),
                                   Text(
-                                    _formatWeatherValue(todayWeather['rainfall']) + ' mm',
+                                    _formatWeatherValue(
+                                          todayWeather['rainfall'],
+                                        ) +
+                                        ' mm',
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 14,
@@ -1316,7 +1439,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                     ),
                                   ),
                                   Text(
-                                    _formatWeatherValue(todayWeather['wind_speed']) + ' m/s',
+                                    _formatWeatherValue(
+                                          todayWeather['wind_speed'],
+                                        ) +
+                                        ' m/s',
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 14,
@@ -1362,7 +1488,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             children: [
                               Row(
                                 children: [
-                                  Icon(Icons.people, color: Colors.blue.shade600),
+                                  Icon(
+                                    Icons.people,
+                                    color: Colors.blue.shade600,
+                                  ),
                                   const SizedBox(width: 8),
                                   Text(
                                     'Visitors',
@@ -1408,7 +1537,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             children: [
                               Row(
                                 children: [
-                                  Icon(Icons.cloud, color: Colors.orange.shade600),
+                                  Icon(
+                                    Icons.cloud,
+                                    color: Colors.orange.shade600,
+                                  ),
                                   const SizedBox(width: 8),
                                   Text(
                                     'Temperature',
@@ -1449,9 +1581,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
             // OVERVIEW
             Text(
               'Overview',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
             if (_isLoadingStats)
@@ -1481,15 +1613,27 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.people_alt, color: Colors.blue, size: 28),
+                        const Icon(
+                          Icons.people_alt,
+                          color: Colors.blue,
+                          size: 28,
+                        ),
                         const SizedBox(height: 8),
                         Text(
                           _weeklyForecast.isNotEmpty
                               ? '${_getCrowdValue(_weeklyForecast.first)}'
                               : '--',
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
+                          ),
                         ),
-                        const Text("Today's Forecast", style: TextStyle(fontSize: 11, color: Colors.grey), textAlign: TextAlign.center),
+                        const Text(
+                          "Today's Forecast",
+                          style: TextStyle(fontSize: 11, color: Colors.grey),
+                          textAlign: TextAlign.center,
+                        ),
                       ],
                     ),
                   ),
@@ -1501,25 +1645,42 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.green.withOpacity(0.3)),
                     ),
-                    child: Builder(builder: (context) {
-                      int peak = 0;
-                      for (var d in _weeklyForecast.take(7)) {
-                        final v = _getCrowdValue(d);
-                        if (v > peak) peak = v;
-                      }
-                      return Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.bar_chart, color: Colors.green, size: 28),
-                          const SizedBox(height: 8),
-                          Text(
-                            _weeklyForecast.isNotEmpty ? '$peak' : '--',
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
-                          ),
-                          const Text('Peak (7-Day)', style: TextStyle(fontSize: 11, color: Colors.grey), textAlign: TextAlign.center),
-                        ],
-                      );
-                    }),
+                    child: Builder(
+                      builder: (context) {
+                        int peak = 0;
+                        for (var d in _weeklyForecast.take(7)) {
+                          final v = _getCrowdValue(d);
+                          if (v > peak) peak = v;
+                        }
+                        return Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.bar_chart,
+                              color: Colors.green,
+                              size: 28,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _weeklyForecast.isNotEmpty ? '$peak' : '--',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                            ),
+                            const Text(
+                              'Peak (7-Day)',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   ),
                   // Avg daily visitors from full forecast
                   Container(
@@ -1529,25 +1690,44 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.orange.withOpacity(0.3)),
                     ),
-                    child: Builder(builder: (context) {
-                      int total = 0;
-                      for (var d in _weeklyForecast) {
-                        total += _getCrowdValue(d);
-                      }
-                      final avg = _weeklyForecast.isNotEmpty ? total ~/ _weeklyForecast.length : 0;
-                      return Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.trending_up, color: Colors.orange, size: 28),
-                          const SizedBox(height: 8),
-                          Text(
-                            _weeklyForecast.isNotEmpty ? '$avg' : '--',
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.orange),
-                          ),
-                          const Text('Avg Daily (Forecast)', style: TextStyle(fontSize: 11, color: Colors.grey), textAlign: TextAlign.center),
-                        ],
-                      );
-                    }),
+                    child: Builder(
+                      builder: (context) {
+                        int total = 0;
+                        for (var d in _weeklyForecast) {
+                          total += _getCrowdValue(d);
+                        }
+                        final avg = _weeklyForecast.isNotEmpty
+                            ? total ~/ _weeklyForecast.length
+                            : 0;
+                        return Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.trending_up,
+                              color: Colors.orange,
+                              size: 28,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _weeklyForecast.isNotEmpty ? '$avg' : '--',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange,
+                              ),
+                            ),
+                            const Text(
+                              'Avg Daily (Forecast)',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   ),
                   // Temperature forecast for today
                   Container(
@@ -1560,15 +1740,27 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.thermostat, color: Colors.red, size: 28),
+                        const Icon(
+                          Icons.thermostat,
+                          color: Colors.red,
+                          size: 28,
+                        ),
                         const SizedBox(height: 8),
                         Text(
                           _weatherData.isNotEmpty
                               ? '${_formatWeatherValue(_weatherData.first['temperature'])}°C'
                               : '--',
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red,
+                          ),
                         ),
-                        const Text('Temp Forecast', style: TextStyle(fontSize: 11, color: Colors.grey), textAlign: TextAlign.center),
+                        const Text(
+                          'Temp Forecast',
+                          style: TextStyle(fontSize: 11, color: Colors.grey),
+                          textAlign: TextAlign.center,
+                        ),
                       ],
                     ),
                   ),
@@ -1680,9 +1872,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
           // Monthly Expected Crowds
           Text(
             'Monthly Expected Crowds Forecast',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           Container(
@@ -1708,9 +1900,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
           // Weekly Crowd Expectations Line Graph
           Text(
             'Weekly Crowd Expectations (Next 7 Days)',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           Container(
@@ -1736,9 +1928,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
           // Daily 7-Day Detailed Prediction
           Text(
             'Daily Crowd Prediction (Next 7 Days)',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           Container(
@@ -1754,19 +1946,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 ),
               ],
             ),
-            child: SizedBox(
-              height: 300,
-              child: _buildDailyBarChart(weekData),
-            ),
+            child: SizedBox(height: 300, child: _buildDailyBarChart(weekData)),
           ),
           const SizedBox(height: 32),
 
           // Summary Cards
           Text(
             'Weekly Summary',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           GridView.count(
@@ -1776,19 +1965,39 @@ class _AdminDashboardState extends State<AdminDashboard> {
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
             children: [
-              _buildSummaryCard('Total Visitors', '$weeklyTotal', Icons.people, Colors.blue),
-              _buildSummaryCard('Daily Avg', '${(weeklyTotal ~/ 7)}', Icons.trending_up, Colors.green),
-              _buildSummaryCard('Avg Temp', '${weekAvgTemp.toStringAsFixed(1)}°C', Icons.thermostat, Colors.orange),
-              _buildSummaryCard('Days', '7', Icons.calendar_today, Colors.purple),
+              _buildSummaryCard(
+                'Total Visitors',
+                '$weeklyTotal',
+                Icons.people,
+                Colors.blue,
+              ),
+              _buildSummaryCard(
+                'Daily Avg',
+                '${(weeklyTotal ~/ 7)}',
+                Icons.trending_up,
+                Colors.green,
+              ),
+              _buildSummaryCard(
+                'Avg Temp',
+                '${weekAvgTemp.toStringAsFixed(1)}°C',
+                Icons.thermostat,
+                Colors.orange,
+              ),
+              _buildSummaryCard(
+                'Days',
+                '7',
+                Icons.calendar_today,
+                Colors.purple,
+              ),
             ],
           ),
           const SizedBox(height: 32),
 
           Text(
             'Monthly Summary (30 Days)',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           GridView.count(
@@ -1798,10 +2007,30 @@ class _AdminDashboardState extends State<AdminDashboard> {
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
             children: [
-              _buildSummaryCard('Total Visitors', '$monthlyTotal', Icons.people, Colors.blue),
-              _buildSummaryCard('Daily Avg', '${(monthlyTotal ~/ 30)}', Icons.trending_up, Colors.green),
-              _buildSummaryCard('Avg Temp', '${monthAvgTemp.toStringAsFixed(1)}°C', Icons.thermostat, Colors.orange),
-              _buildSummaryCard('Days', '30', Icons.calendar_today, Colors.purple),
+              _buildSummaryCard(
+                'Total Visitors',
+                '$monthlyTotal',
+                Icons.people,
+                Colors.blue,
+              ),
+              _buildSummaryCard(
+                'Daily Avg',
+                '${(monthlyTotal ~/ 30)}',
+                Icons.trending_up,
+                Colors.green,
+              ),
+              _buildSummaryCard(
+                'Avg Temp',
+                '${monthAvgTemp.toStringAsFixed(1)}°C',
+                Icons.thermostat,
+                Colors.orange,
+              ),
+              _buildSummaryCard(
+                'Days',
+                '30',
+                Icons.calendar_today,
+                Colors.purple,
+              ),
             ],
           ),
         ],
@@ -1812,17 +2041,26 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget _buildMonthlyBarChart(List<dynamic> data, int maxValue) {
     // Use XGBoost model monthly data if available, otherwise compute from daily
     Map<String, int> monthlyData = {};
-    
+
     if (_monthlyForecast.isNotEmpty) {
       print('✓ Using XGBoost model monthly predictions');
-      
+
       // Map full month names to abbreviated names
       final monthMapping = {
-        'January': 'Jan', 'February': 'Feb', 'March': 'Mar', 'April': 'Apr',
-        'May': 'May', 'June': 'Jun', 'July': 'Jul', 'August': 'Aug',
-        'September': 'Sep', 'October': 'Oct', 'November': 'Nov', 'December': 'Dec'
+        'January': 'Jan',
+        'February': 'Feb',
+        'March': 'Mar',
+        'April': 'Apr',
+        'May': 'May',
+        'June': 'Jun',
+        'July': 'Jul',
+        'August': 'Aug',
+        'September': 'Sep',
+        'October': 'Oct',
+        'November': 'Nov',
+        'December': 'Dec',
       };
-      
+
       for (var entry in _monthlyForecast.entries) {
         final abbrevMonth = monthMapping[entry.key] ?? entry.key;
         monthlyData[abbrevMonth] = entry.value is int ? entry.value : 0;
@@ -1832,7 +2070,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       print('⚠ Computing monthly aggregates from daily forecast');
       monthlyData = _getMonthlyAggregates(data);
     }
-    
+
     if (monthlyData.isEmpty) {
       return Center(
         child: Text(
@@ -1844,10 +2082,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
     // Ensure all 12 months are present
     final monthNames = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
-    
+
     // Fill in missing months with data from monthlyData or use default
     for (String month in monthNames) {
       if (!monthlyData.containsKey(month)) {
@@ -1855,12 +2103,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
         monthlyData[month] = 3500; // Default value for missing months
       }
     }
-    
+
     // Get values in order and calculate max
-    final values = monthNames.map((m) => (monthlyData[m] ?? 0).toDouble()).toList();
-    final actualMax = values.isEmpty ? 5000 : values.reduce((a, b) => a > b ? a : b).toInt();
+    final values = monthNames
+        .map((m) => (monthlyData[m] ?? 0).toDouble())
+        .toList();
+    final actualMax = values.isEmpty
+        ? 5000
+        : values.reduce((a, b) => a > b ? a : b).toInt();
     final maxDisplayValue = (actualMax > 0 ? (actualMax * 1.2) : 5000).toInt();
-    
+
     print('✓ Monthly chart data: $monthlyData');
     print('✓ Values: $values, Max: $actualMax, Display Max: $maxDisplayValue');
 
@@ -1878,7 +2130,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ? (value > 7000 ? Colors.red : Colors.orange)
                   : (value > 1500 ? Colors.amber : Colors.blue),
               width: 20,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(6),
+              ),
               backDrawRodData: BackgroundBarChartRodData(
                 show: true,
                 toY: maxDisplayValue.toDouble(),
@@ -1896,12 +2150,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
-          horizontalInterval: maxDisplayValue > 0 ? (maxDisplayValue / 4).toInt().toDouble() : 1000,
+          horizontalInterval: maxDisplayValue > 0
+              ? (maxDisplayValue / 4).toInt().toDouble()
+              : 1000,
           getDrawingHorizontalLine: (value) {
-            return FlLine(
-              color: Colors.grey.withOpacity(0.2),
-              strokeWidth: 1,
-            );
+            return FlLine(color: Colors.grey.withOpacity(0.2), strokeWidth: 1);
           },
         ),
         titlesData: FlTitlesData(
@@ -1939,7 +2192,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ),
         ),
-        borderData: FlBorderData(show: true, border: Border.all(color: Colors.grey.shade300)),
+        borderData: FlBorderData(
+          show: true,
+          border: Border.all(color: Colors.grey.shade300),
+        ),
         maxY: maxDisplayValue.toDouble(),
         minY: 0,
         barTouchData: BarTouchData(
@@ -1961,7 +2217,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget _buildWeeklyLineChart(List<dynamic> data) {
     final spots = <FlSpot>[];
     int maxValue = 0;
-    
+
     for (int i = 0; i < data.length && i < 7; i++) {
       try {
         final visitors = _getCrowdValue(data[i]).toDouble();
@@ -1982,12 +2238,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
-          horizontalInterval: maxDisplayValue > 0 ? (maxDisplayValue / 4).toInt().toDouble() : 1000,
+          horizontalInterval: maxDisplayValue > 0
+              ? (maxDisplayValue / 4).toInt().toDouble()
+              : 1000,
           getDrawingHorizontalLine: (value) {
-            return FlLine(
-              color: Colors.grey.withOpacity(0.2),
-              strokeWidth: 1,
-            );
+            return FlLine(color: Colors.grey.withOpacity(0.2), strokeWidth: 1);
           },
         ),
         titlesData: FlTitlesData(
@@ -1999,7 +2254,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
               showTitles: true,
               getTitlesWidget: (value, meta) {
                 int index = value.toInt();
-                if (index < 0 || index >= dayLabels.length) return const Text('');
+                if (index < 0 || index >= dayLabels.length)
+                  return const Text('');
                 return Text(
                   dayLabels[index],
                   style: const TextStyle(fontSize: 11, color: Colors.grey),
@@ -2020,7 +2276,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ),
         ),
-        borderData: FlBorderData(show: true, border: Border.all(color: Colors.grey.shade300)),
+        borderData: FlBorderData(
+          show: true,
+          border: Border.all(color: Colors.grey.shade300),
+        ),
         lineBarsData: [
           LineChartBarData(
             spots: spots,
@@ -2046,7 +2305,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
             belowBarData: BarAreaData(
               show: true,
               gradient: LinearGradient(
-                colors: [Colors.teal.withOpacity(0.3), Colors.teal.withOpacity(0.01)],
+                colors: [
+                  Colors.teal.withOpacity(0.3),
+                  Colors.teal.withOpacity(0.01),
+                ],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
@@ -2062,13 +2324,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget _buildDailyBarChart(List<dynamic> data) {
     List<BarChartGroupData> barGroups = [];
     int maxValue = 0;
-    final dayLabels = ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'];
+    final dayLabels = [
+      'Day 1',
+      'Day 2',
+      'Day 3',
+      'Day 4',
+      'Day 5',
+      'Day 6',
+      'Day 7',
+    ];
 
     for (int i = 0; i < data.length && i < 7; i++) {
       try {
         final visitors = _getCrowdValue(data[i]);
         if (visitors > maxValue) maxValue = visitors;
-        
+
         barGroups.add(
           BarChartGroupData(
             x: i,
@@ -2079,7 +2349,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     ? (visitors > 7000 ? Colors.red : Colors.orange)
                     : (visitors > 1500 ? Colors.amber : Colors.blue),
                 width: 22,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(6),
+                ),
                 backDrawRodData: BackgroundBarChartRodData(
                   show: true,
                   toY: (maxValue * 1.2).toDouble(),
@@ -2094,11 +2366,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           BarChartGroupData(
             x: i,
             barRods: [
-              BarChartRodData(
-                toY: 0,
-                color: Colors.grey.shade300,
-                width: 22,
-              ),
+              BarChartRodData(toY: 0, color: Colors.grey.shade300, width: 22),
             ],
           ),
         );
@@ -2113,12 +2381,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
-          horizontalInterval: maxDisplayValue > 0 ? (maxDisplayValue / 4).toInt().toDouble() : 1000,
+          horizontalInterval: maxDisplayValue > 0
+              ? (maxDisplayValue / 4).toInt().toDouble()
+              : 1000,
           getDrawingHorizontalLine: (value) {
-            return FlLine(
-              color: Colors.grey.withOpacity(0.2),
-              strokeWidth: 1,
-            );
+            return FlLine(color: Colors.grey.withOpacity(0.2), strokeWidth: 1);
           },
         ),
         titlesData: FlTitlesData(
@@ -2130,7 +2397,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
               showTitles: true,
               getTitlesWidget: (value, meta) {
                 int index = value.toInt();
-                if (index < 0 || index >= dayLabels.length) return const Text('');
+                if (index < 0 || index >= dayLabels.length)
+                  return const Text('');
                 return Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
@@ -2154,7 +2422,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ),
         ),
-        borderData: FlBorderData(show: true, border: Border.all(color: Colors.grey.shade300)),
+        borderData: FlBorderData(
+          show: true,
+          border: Border.all(color: Colors.grey.shade300),
+        ),
         maxY: maxDisplayValue.toDouble(),
         minY: 0,
         barTouchData: BarTouchData(
@@ -2164,7 +2435,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
               return BarTooltipItem(
                 '${dayLabels[groupIndex]}\n${rod.toY.toInt()} visitors',
-                const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
               );
             },
           ),
@@ -2173,7 +2448,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildSummaryCard(String label, String value, IconData icon, Color color) {
+  Widget _buildSummaryCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -2197,10 +2477,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           const SizedBox(height: 4),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade600,
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
             textAlign: TextAlign.center,
           ),
         ],
@@ -2211,19 +2488,32 @@ class _AdminDashboardState extends State<AdminDashboard> {
   // FEATURE 1: SEASONAL TRENDS HIGHLIGHT
   Widget _buildSeasonalTrendsScreen() {
     final monthNames = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     final peakSeasons = [0, 6, 7, 11]; // Jan, Jul, Aug, Dec (0-indexed)
-    
+
     // Calculate average across all months
     final monthlyValues = _monthlyForecast.values.whereType<int>().toList();
-    final avgVisitors = monthlyValues.isEmpty ? 0 : (monthlyValues.reduce((a, b) => a + b) / monthlyValues.length).toInt();
-    
+    final avgVisitors = monthlyValues.isEmpty
+        ? 0
+        : (monthlyValues.reduce((a, b) => a + b) / monthlyValues.length)
+              .toInt();
+
     // Classification thresholds
     final lowThreshold = (avgVisitors * 0.8).toInt();
     final highThreshold = (avgVisitors * 1.2).toInt();
-    
+
     return RefreshIndicator(
       onRefresh: _loadAllData,
       child: SingleChildScrollView(
@@ -2233,20 +2523,26 @@ class _AdminDashboardState extends State<AdminDashboard> {
           children: [
             Text(
               'Seasonal Trends Analysis',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
               'Current & upcoming months (${DateTime.now().year})',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
             ),
             const SizedBox(height: 24),
-            
+
             // Summary metrics
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [Colors.blue.shade400, Colors.blue.shade700]),
+                gradient: LinearGradient(
+                  colors: [Colors.blue.shade400, Colors.blue.shade700],
+                ),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -2257,7 +2553,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     children: [
                       Text(
                         'Remaining Months Overview',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                       ),
                       Icon(Icons.calendar_today, color: Colors.white70),
                     ],
@@ -2266,31 +2566,57 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildSeasonMetric('Avg Visitors/Day', '$avgVisitors', Colors.white),
-                      _buildSeasonMetric('Peak: $highThreshold+', '${peakSeasons.length}mo', Colors.yellow.shade200),
-                      _buildSeasonMetric('Low: <$lowThreshold', '${12 - peakSeasons.length}mo', Colors.blue.shade100),
+                      _buildSeasonMetric(
+                        'Avg Visitors/Day',
+                        '$avgVisitors',
+                        Colors.white,
+                      ),
+                      _buildSeasonMetric(
+                        'Peak: $highThreshold+',
+                        '${peakSeasons.length}mo',
+                        Colors.yellow.shade200,
+                      ),
+                      _buildSeasonMetric(
+                        'Low: <$lowThreshold',
+                        '${12 - peakSeasons.length}mo',
+                        Colors.blue.shade100,
+                      ),
                     ],
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-            
+
             // Monthly breakdown
             Text(
               'Month-by-Month Breakdown',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-            
-            ..._buildMonthlySeasonCards(monthNames, peakSeasons, lowThreshold, highThreshold, avgVisitors),
+
+            ..._buildMonthlySeasonCards(
+              monthNames,
+              peakSeasons,
+              lowThreshold,
+              highThreshold,
+              avgVisitors,
+            ),
           ],
         ),
       ),
     );
   }
-  
-  List<Widget> _buildMonthlySeasonCards(List<String> monthNames, List<int> peakSeasons, int lowThreshold, int highThreshold, int avgVisitors) {
+
+  List<Widget> _buildMonthlySeasonCards(
+    List<String> monthNames,
+    List<int> peakSeasons,
+    int lowThreshold,
+    int highThreshold,
+    int avgVisitors,
+  ) {
     final daysPerMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
     // Start from the current month (0-indexed), so past months are hidden
     final currentMonthIndex = DateTime.now().month - 1;
@@ -2298,15 +2624,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
     for (int i = currentMonthIndex; i < 12 && i < monthNames.length; i++) {
       final monthName = monthNames[i];
       final visitors = _safeToInt(_monthlyForecast[monthName], avgVisitors);
-      
+
       final isPeakSeason = peakSeasons.contains(i);
-      final seasonType = isPeakSeason ? 'Peak Season' : 
-                         (visitors < lowThreshold ? 'Low Season' : 'Average Season');
-      final seasonColor = isPeakSeason ? Colors.amber : 
-                          (visitors < lowThreshold ? Colors.blue : Colors.teal);
-      
+      final seasonType = isPeakSeason
+          ? 'Peak Season'
+          : (visitors < lowThreshold ? 'Low Season' : 'Average Season');
+      final seasonColor = isPeakSeason
+          ? Colors.amber
+          : (visitors < lowThreshold ? Colors.blue : Colors.teal);
+
       final totalMonthVisitors = visitors * daysPerMonth[i];
-      
+
       cards.add(
         Container(
           margin: const EdgeInsets.only(bottom: 12),
@@ -2327,18 +2655,26 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     children: [
                       Text(
                         monthNames[i],
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 4),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: seasonColor,
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Text(
                           seasonType,
-                          style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ],
@@ -2350,7 +2686,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      isPeakSeason ? '⭐' : (visitors < lowThreshold ? '❄️' : '☀️'),
+                      isPeakSeason
+                          ? '⭐'
+                          : (visitors < lowThreshold ? '❄️' : '☀️'),
                       style: const TextStyle(fontSize: 24),
                     ),
                   ),
@@ -2359,12 +2697,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
               const SizedBox(height: 12),
               Text(
                 'Predicted Daily Avg: $visitors visitors',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey.shade700),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade700),
               ),
               const SizedBox(height: 4),
               Text(
                 'Total for Month: ${totalMonthVisitors ~/ 1000}K visitors',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey.shade700),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade700),
               ),
               const SizedBox(height: 12),
               Text(
@@ -2381,17 +2723,27 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
     return cards;
   }
-  
+
   Widget _buildSeasonMetric(String label, String value, Color color) {
     return Column(
       children: [
-        Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
         const SizedBox(height: 4),
-        Text(label, style: TextStyle(fontSize: 11, color: color.withOpacity(0.9))),
+        Text(
+          label,
+          style: TextStyle(fontSize: 11, color: color.withOpacity(0.9)),
+        ),
       ],
     );
   }
-  
+
   String _getSeasonalRecommendation(String season, int visitors, int avg) {
     if (season == 'Peak Season') {
       return '→ Maximize staffing levels, consider premium pricing and special events. Book accommodations early.';
@@ -2413,15 +2765,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
           children: [
             Text(
               'Capacity Utilization',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 24),
-            
+
             // Facility Capacity Summary
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [Colors.purple.shade400, Colors.purple.shade700]),
+                gradient: LinearGradient(
+                  colors: [Colors.purple.shade400, Colors.purple.shade700],
+                ),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -2429,57 +2785,91 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 children: [
                   Text(
                     'Sigiriya Facility Capacity',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildCapacityBadge('Maximum', '$_facilityCapacity', Colors.white),
-                      _buildCapacityBadge('90% Level', '${(_facilityCapacity * 0.9).toInt()}', Colors.orange.shade100),
-                      _buildCapacityBadge('80% Level', '${(_facilityCapacity * 0.8).toInt()}', Colors.yellow.shade100),
+                      _buildCapacityBadge(
+                        'Maximum',
+                        '$_facilityCapacity',
+                        Colors.white,
+                      ),
+                      _buildCapacityBadge(
+                        '90% Level',
+                        '${(_facilityCapacity * 0.9).toInt()}',
+                        Colors.orange.shade100,
+                      ),
+                      _buildCapacityBadge(
+                        '80% Level',
+                        '${(_facilityCapacity * 0.8).toInt()}',
+                        Colors.yellow.shade100,
+                      ),
                     ],
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-            
+
             // Capacity Thresholds & Critical Dates
             Text(
               'Critical Dates & Capacity Thresholds',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-            
+
             ..._buildCapacityAnalysis(),
           ],
         ),
       ),
     );
   }
-  
+
   List<Widget> _buildCapacityAnalysis() {
-    final monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    final monthNames = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
     final avgVisitors = _monthlyForecast.values.whereType<int>().toList();
-    final avgMonthly = avgVisitors.isEmpty ? 0 : (avgVisitors.reduce((a, b) => a + b) / avgVisitors.length).toInt();
-    
+    final avgMonthly = avgVisitors.isEmpty
+        ? 0
+        : (avgVisitors.reduce((a, b) => a + b) / avgVisitors.length).toInt();
+
     List<Widget> widgets = [];
     // Only show current month and future months
     final currentMonthIndex = DateTime.now().month - 1;
     for (int i = currentMonthIndex; i < 12 && i < monthNames.length; i++) {
       final monthName = monthNames[i];
       final dailyVisitors = _safeToInt(_monthlyForecast[monthName], avgMonthly);
-      
+
       final capacity80 = (_facilityCapacity * 0.8).toInt();
       final capacity90 = (_facilityCapacity * 0.9).toInt();
-      final utilization = _facilityCapacity > 0 ? ((dailyVisitors / _facilityCapacity) * 100).toInt() : 0;
-      
+      final utilization = _facilityCapacity > 0
+          ? ((dailyVisitors / _facilityCapacity) * 100).toInt()
+          : 0;
+
       Color statusColor = Colors.green;
       String statusLabel = 'Safe';
       String warningLevel = '✓ Safe';
       IconData statusIcon = Icons.check_circle;
-      
+
       if (dailyVisitors > _facilityCapacity) {
         statusColor = Colors.red;
         statusLabel = 'Overcrowded';
@@ -2496,7 +2886,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         warningLevel = '⚠ Moderate - Prepare Resources';
         statusIcon = Icons.info;
       }
-      
+
       widgets.add(
         Container(
           margin: const EdgeInsets.only(bottom: 12),
@@ -2517,11 +2907,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     children: [
                       Text(
                         monthName,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: statusColor,
                           borderRadius: BorderRadius.circular(16),
@@ -2533,7 +2928,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             const SizedBox(width: 6),
                             Text(
                               statusLabel,
-                              style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ],
                         ),
@@ -2542,7 +2941,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ),
                   Text(
                     '$utilization%',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: statusColor),
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: statusColor,
+                    ),
                   ),
                 ],
               ),
@@ -2550,7 +2953,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: LinearProgressIndicator(
-                  value: _facilityCapacity > 0 ? (dailyVisitors / _facilityCapacity).clamp(0.0, 1.2) : 0.0,
+                  value: _facilityCapacity > 0
+                      ? (dailyVisitors / _facilityCapacity).clamp(0.0, 1.2)
+                      : 0.0,
                   minHeight: 8,
                   backgroundColor: Colors.grey.shade300,
                   valueColor: AlwaysStoppedAnimation<Color>(statusColor),
@@ -2562,11 +2967,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 children: [
                   Text(
                     'Daily Avg: $dailyVisitors visitors',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey.shade700),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey.shade700,
+                    ),
                   ),
                   Text(
                     'Capacity: $_facilityCapacity',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey.shade700),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey.shade700,
+                    ),
                   ),
                 ],
               ),
@@ -2579,7 +2988,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 ),
                 child: Text(
                   warningLevel,
-                  style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
@@ -2595,20 +3008,30 @@ class _AdminDashboardState extends State<AdminDashboard> {
         ),
       );
     }
-    
+
     return widgets;
   }
-  
+
   Widget _buildCapacityBadge(String label, String value, Color color) {
     return Column(
       children: [
-        Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
         const SizedBox(height: 4),
-        Text(label, style: TextStyle(fontSize: 11, color: color.withOpacity(0.9))),
+        Text(
+          label,
+          style: TextStyle(fontSize: 11, color: color.withOpacity(0.9)),
+        ),
       ],
     );
   }
-  
+
   String _getCapacityRecommendation(String status, int visitors) {
     if (status == 'Overcrowded') {
       return '→ URGENT: Implement crowd control measures, consider time-slot restrictions, increase security staff.';
@@ -2632,10 +3055,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
           children: [
             Text(
               'Custom Report Generator',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 24),
-            
+
             // Date Range Selection
             Container(
               padding: const EdgeInsets.all(16),
@@ -2649,7 +3074,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 children: [
                   Text(
                     'Select Analysis Period',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -2667,11 +3094,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('From', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey)),
+                                Text(
+                                  'From',
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(color: Colors.grey),
+                                ),
                                 const SizedBox(height: 4),
                                 Text(
                                   '${_selectedStartDate.year}-${_selectedStartDate.month.toString().padLeft(2, '0')}-${_selectedStartDate.day.toString().padLeft(2, '0')}',
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
@@ -2692,11 +3124,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('To', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey)),
+                                Text(
+                                  'To',
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(color: Colors.grey),
+                                ),
                                 const SizedBox(height: 4),
                                 Text(
                                   '${_selectedEndDate.year}-${_selectedEndDate.month.toString().padLeft(2, '0')}-${_selectedEndDate.day.toString().padLeft(2, '0')}',
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
@@ -2708,27 +3145,31 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   const SizedBox(height: 12),
                   Text(
                     'Duration: ${_selectedEndDate.difference(_selectedStartDate).inDays + 1} days',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey.shade700),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey.shade700,
+                    ),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-            
+
             // Comparison Period Analysis
             Text(
               'Period Comparison',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-            
+
             ..._buildPeriodComparison(),
           ],
         ),
       ),
     );
   }
-  
+
   Future<void> _selectStartDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -2740,7 +3181,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       setState(() => _selectedStartDate = picked);
     }
   }
-  
+
   Future<void> _selectEndDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -2752,27 +3193,45 @@ class _AdminDashboardState extends State<AdminDashboard> {
       setState(() => _selectedEndDate = picked);
     }
   }
-  
+
   List<Widget> _buildPeriodComparison() {
-    final monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    final monthNames = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
     final monthlyValues = _monthlyForecast.values.whereType<int>().toList();
-    final avgMonthly = monthlyValues.isEmpty ? 0 : (monthlyValues.reduce((a, b) => a + b) / monthlyValues.length).toInt();
-    
+    final avgMonthly = monthlyValues.isEmpty
+        ? 0
+        : (monthlyValues.reduce((a, b) => a + b) / monthlyValues.length)
+              .toInt();
+
     int selectedPeriodVisitors = 0;
-    int daysInPeriod = _selectedEndDate.difference(_selectedStartDate).inDays + 1;
-    
+    int daysInPeriod =
+        _selectedEndDate.difference(_selectedStartDate).inDays + 1;
+
     // Calculate visitors for selected date range
     DateTime current = _selectedStartDate;
-    while (current.isBefore(_selectedEndDate) || current.isAtSameMomentAs(_selectedEndDate)) {
+    while (current.isBefore(_selectedEndDate) ||
+        current.isAtSameMomentAs(_selectedEndDate)) {
       final monthIndex = current.month - 1;
       final monthName = monthNames[monthIndex];
       final dailyVisitors = _safeToInt(_monthlyForecast[monthName], avgMonthly);
       selectedPeriodVisitors += dailyVisitors;
       current = current.add(const Duration(days: 1));
     }
-    
+
     final avgDailyVisitors = (selectedPeriodVisitors / daysInPeriod).toInt();
-    
+
     return [
       Container(
         padding: const EdgeInsets.all(16),
@@ -2786,12 +3245,26 @@ class _AdminDashboardState extends State<AdminDashboard> {
           children: [
             Text(
               'Selected Period Summary',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-            _buildComparisonRow('Total Visitors', selectedPeriodVisitors.toString(), Colors.blue),
-            _buildComparisonRow('Average Daily', '$avgDailyVisitors visitors', Colors.teal),
-            _buildComparisonRow('Days in Period', '$daysInPeriod days', Colors.orange),
+            _buildComparisonRow(
+              'Total Visitors',
+              selectedPeriodVisitors.toString(),
+              Colors.blue,
+            ),
+            _buildComparisonRow(
+              'Average Daily',
+              '$avgDailyVisitors visitors',
+              Colors.teal,
+            ),
+            _buildComparisonRow(
+              'Days in Period',
+              '$daysInPeriod days',
+              Colors.orange,
+            ),
           ],
         ),
       ),
@@ -2808,11 +3281,23 @@ class _AdminDashboardState extends State<AdminDashboard> {
           children: [
             Text(
               'Full Year 2026 Comparison',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-            _buildComparisonRow('Total Annual Visitors', monthlyValues.isEmpty ? '0' : '${monthlyValues.reduce((a, b) => a + b) * 30}', Colors.blue),
-            _buildComparisonRow('Monthly Average', '$avgMonthly visitors/day', Colors.teal),
+            _buildComparisonRow(
+              'Total Annual Visitors',
+              monthlyValues.isEmpty
+                  ? '0'
+                  : '${monthlyValues.reduce((a, b) => a + b) * 30}',
+              Colors.blue,
+            ),
+            _buildComparisonRow(
+              'Monthly Average',
+              '$avgMonthly visitors/day',
+              Colors.teal,
+            ),
           ],
         ),
       ),
@@ -2830,14 +3315,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ),
     ];
   }
-  
+
   Widget _buildComparisonRow(String label, String value, Color color) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey.shade700)),
+          Text(
+            label,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade700),
+          ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -2846,43 +3336,64 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
             child: Text(
               value,
-              style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 13),
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
             ),
           ),
         ],
       ),
     );
   }
-  
+
   void _generateCustomReport() {
-    final monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    final monthNames = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
     StringBuffer report = StringBuffer();
     report.writeln('CUSTOM VISITOR FORECAST REPORT');
     report.writeln('Generated: ${DateTime.now()}');
-    report.writeln('Period: ${_selectedStartDate.toString().split(' ')[0]} to ${_selectedEndDate.toString().split(' ')[0]}');
+    report.writeln(
+      'Period: ${_selectedStartDate.toString().split(' ')[0]} to ${_selectedEndDate.toString().split(' ')[0]}',
+    );
     report.writeln('');
     report.writeln('Monthly Forecast Data:');
     report.writeln('Month,Avg Daily Visitors,Days,Total Visitors,Est Revenue');
-    
+
     final daysPerMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
     int totalAnnualVisitors = 0;
     int totalRevenue = 0;
-    
+
     for (int i = 0; i < 12 && i < monthNames.length; i++) {
       final monthName = monthNames[i];
       final dailyVisitors = _safeToInt(_monthlyForecast[monthName], 3500);
       final monthTotal = dailyVisitors * daysPerMonth[i];
       final monthRevenue = monthTotal * 37;
-      report.writeln('$monthName,$dailyVisitors,${daysPerMonth[i]},$monthTotal,$monthRevenue');
+      report.writeln(
+        '$monthName,$dailyVisitors,${daysPerMonth[i]},$monthTotal,$monthRevenue',
+      );
       totalAnnualVisitors += monthTotal;
       totalRevenue += monthRevenue;
     }
-    
+
     report.writeln('');
     report.writeln('ANNUAL SUMMARY');
     report.writeln('Total Visitors: $totalAnnualVisitors');
     report.writeln('Total Revenue: \$$totalRevenue');
-    
+
     _showCSVDialog('Custom Report Export', report.toString());
   }
 
@@ -2894,12 +3405,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
         children: [
           Text(
             'Data Reports',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 24),
-          
+
           _buildReportTile(
             'Crowd Predictions',
             'Full year 2026 visitor forecasts',
@@ -2909,7 +3420,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             () => _exportCrowdDataAsCSV(),
           ),
           const SizedBox(height: 12),
-          
+
           _buildReportTile(
             'Weather Predictions',
             'Temperature, rainfall & wind data',
@@ -2919,22 +3430,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
             () => _exportWeatherDataAsCSV(),
           ),
           const SizedBox(height: 24),
-          
+
           Text(
             'Report Contents',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 12),
-          
+
           _buildReportInfo('Crowd Data', [
             '✓ Daily visitor predictions',
             '✓ Upper and lower bounds',
             '✓ Date information',
           ]),
           const SizedBox(height: 16),
-          
+
           _buildReportInfo('Weather Data', [
             '✓ Temperature forecasts',
             '✓ Rainfall predictions',
@@ -2995,7 +3506,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 label: const Text('Download'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: color,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                 ),
               ),
             ],
@@ -3009,10 +3523,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
             child: Text(
               duration,
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.grey.shade700,
-              ),
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
             ),
           ),
         ],
@@ -3033,22 +3544,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          ...items.map((item) => Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text(
-              item,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade700,
+          ...items.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                item,
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
               ),
             ),
-          )),
+          ),
         ],
       ),
     );
@@ -3062,9 +3569,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
         children: [
           Text(
             'Configuration & Settings',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 24),
 
@@ -3097,65 +3604,55 @@ class _AdminDashboardState extends State<AdminDashboard> {
           const SizedBox(height: 24),
 
           // Prediction Models Section
-          _buildSettingSection(
-            'Prediction Models',
-            Icons.smart_toy,
-            Colors.blue,
-            [
-              _buildSettingCard(
-                'Crowd Prediction Model',
-                'Uses XGBoost with feature engineering (month, weekday, season, holidays, day-of-year, week-of-year, quarter, lag values, rolling averages)',
-                'XGBoost Model v1.0',
-                Icons.model_training,
-              ),
-              _buildSettingCard(
-                'Weather Forecast Model',
-                'Uses Facebook Prophet time-series forecasting for temperature, rainfall, and wind predictions',
-                'Facebook Prophet v1.1',
-                Icons.cloud,
-              ),
-              _buildSettingCard(
-                'Features Used',
-                'Month, is_weekend, peak_season_flag, holiday_flag, day_of_year, week_of_year, quarter, lag_1, lag_7, rolling_mean_7',
-                'Configured',
-                Icons.settings,
-              ),
-            ],
-          ),
+          _buildSettingSection('Prediction Models', Icons.smart_toy, Colors.blue, [
+            _buildSettingCard(
+              'Crowd Prediction Model',
+              'Uses XGBoost with feature engineering (month, weekday, season, holidays, day-of-year, week-of-year, quarter, lag values, rolling averages)',
+              'XGBoost Model v1.0',
+              Icons.model_training,
+            ),
+            _buildSettingCard(
+              'Weather Forecast Model',
+              'Uses Facebook Prophet time-series forecasting for temperature, rainfall, and wind predictions',
+              'Facebook Prophet v1.1',
+              Icons.cloud,
+            ),
+            _buildSettingCard(
+              'Features Used',
+              'Month, is_weekend, peak_season_flag, holiday_flag, day_of_year, week_of_year, quarter, lag_1, lag_7, rolling_mean_7',
+              'Configured',
+              Icons.settings,
+            ),
+          ]),
           const SizedBox(height: 24),
 
           // API Configuration Section
-          _buildSettingSection(
-            'API Configuration',
-            Icons.api,
-            Colors.green,
-            [
-              _buildSettingCard(
-                'API Base URL',
-                'Backend server for forecasts and weather data',
-                'http://10.0.2.2:8000',
-                Icons.language,
-              ),
-              _buildSettingCard(
-                'Forecast Endpoint',
-                'Returns 90-day crowd predictions with confidence intervals',
-                '/forecast',
-                Icons.trending_up,
-              ),
-              _buildSettingCard(
-                'Weather Endpoint',
-                'Returns 30-day weather forecast data',
-                '/weather_forecast',
-                Icons.cloud_download,
-              ),
-              _buildSettingCard(
-                'Fallback Data',
-                'Uses synthetic data when API is unavailable or slow',
-                'Enabled',
-                Icons.backup,
-              ),
-            ],
-          ),
+          _buildSettingSection('API Configuration', Icons.api, Colors.green, [
+            _buildSettingCard(
+              'API Base URL',
+              'Backend server for forecasts and weather data',
+              ApiConfig.baseUrl,
+              Icons.language,
+            ),
+            _buildSettingCard(
+              'Forecast Endpoint',
+              'Returns 90-day crowd predictions with confidence intervals',
+              '/forecast',
+              Icons.trending_up,
+            ),
+            _buildSettingCard(
+              'Weather Endpoint',
+              'Returns 30-day weather forecast data',
+              '/weather_forecast',
+              Icons.cloud_download,
+            ),
+            _buildSettingCard(
+              'Fallback Data',
+              'Uses synthetic data when API is unavailable or slow',
+              'Enabled',
+              Icons.backup,
+            ),
+          ]),
           const SizedBox(height: 24),
 
           // Notification Settings Section
@@ -3201,7 +3698,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       decoration: BoxDecoration(
                         color: Colors.purple.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.purple.withOpacity(0.3)),
+                        border: Border.all(
+                          color: Colors.purple.withOpacity(0.3),
+                        ),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -3211,16 +3710,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             children: [
                               Text(
                                 'Export Crowd Data',
-                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                style: Theme.of(context).textTheme.bodyLarge
+                                    ?.copyWith(fontWeight: FontWeight.w600),
                               ),
                               const SizedBox(height: 4),
                               Text(
                                 'Download forecast data as CSV',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Colors.grey.shade600,
-                                ),
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(color: Colors.grey.shade600),
                               ),
                             ],
                           ),
@@ -3251,16 +3748,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           children: [
                             Text(
                               'Export Weather Data',
-                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: Theme.of(context).textTheme.bodyLarge
+                                  ?.copyWith(fontWeight: FontWeight.w600),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               'Download weather forecast as CSV',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Colors.grey.shade600,
-                              ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: Colors.grey.shade600),
                             ),
                           ],
                         ),
@@ -3286,23 +3781,23 @@ class _AdminDashboardState extends State<AdminDashboard> {
               children: [
                 Text(
                   'About This Dashboard',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   'This admin dashboard provides real-time crowd and weather forecasting for Sigiriya using advanced machine learning models.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey.shade700,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade700),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   'Version 1.0 • Last Updated: 2024',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey.shade600,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
                 ),
               ],
             ),
@@ -3313,7 +3808,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildSettingSection(String title, IconData icon, Color color, List<Widget> children) {
+  Widget _buildSettingSection(
+    String title,
+    IconData icon,
+    Color color,
+    List<Widget> children,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -3336,7 +3836,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildSettingCard(String title, String description, String value, IconData icon) {
+  Widget _buildSettingCard(
+    String title,
+    String description,
+    String value,
+    IconData icon,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
@@ -3354,9 +3859,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
               Expanded(
                 child: Text(
                   title,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
               Icon(icon, color: Colors.grey.shade600, size: 20),
@@ -3365,9 +3870,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
           const SizedBox(height: 8),
           Text(
             description,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.grey.shade600,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
           ),
           const SizedBox(height: 8),
           Container(
@@ -3389,7 +3894,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildToggleSettingCard(String title, String description, bool defaultValue) {
+  Widget _buildToggleSettingCard(
+    String title,
+    String description,
+    bool defaultValue,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
@@ -3407,16 +3916,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
               children: [
                 Text(
                   title,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   description,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey.shade600,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
                 ),
               ],
             ),

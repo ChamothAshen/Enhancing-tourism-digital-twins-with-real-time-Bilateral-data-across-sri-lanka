@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'admin_register_screen.dart';
 import 'admin_dashboard.dart';
+import 'config/api_config.dart';
 
 class AdminLoginScreen extends StatefulWidget {
   const AdminLoginScreen({super.key});
@@ -18,7 +19,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
 
-  static const String apiBaseUrl = 'http://10.0.2.2:8000';
+  static const String apiBaseUrl = ApiConfig.baseUrl;
 
   @override
   void dispose() {
@@ -58,7 +59,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
         };
 
         if (!mounted) return;
-        
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
