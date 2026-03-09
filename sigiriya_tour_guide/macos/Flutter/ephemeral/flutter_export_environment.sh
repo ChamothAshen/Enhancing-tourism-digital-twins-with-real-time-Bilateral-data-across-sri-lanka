@@ -1,7 +1,7 @@
 #!/bin/sh
 # This is a generated file; do not edit or check into version control.
-export "FLUTTER_ROOT=C:\Users\USER\src\flutter"
-export "FLUTTER_APPLICATION_PATH=D:\USER DATA\Documents\Enhancing-tourism-digital-twins-with-real-time-Bilateral-data-across-sri-lanka\sigiriya_tour_guide"
+export "FLUTTER_ROOT=/Users/tharushishehara/developer/flutter"
+export "FLUTTER_APPLICATION_PATH=/Users/tharushishehara/Desktop/visualization/Enhancing-tourism-digital-twins-with-real-time-Bilateral-data-across-sri-lanka/sigiriya_tour_guide"
 export "COCOAPODS_PARALLEL_CODE_SIGN=true"
 export "FLUTTER_BUILD_DIR=build"
 export "FLUTTER_BUILD_NAME=1.0.0"
