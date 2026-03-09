@@ -6,7 +6,7 @@ import 'admin_login_screen.dart';
 
 class ManagerPortalScreen extends StatefulWidget {
   final Map<String, dynamic>? initialAdminData;
-  
+
   const ManagerPortalScreen({super.key, this.initialAdminData});
 
   @override
@@ -17,7 +17,7 @@ class _ManagerPortalScreenState extends State<ManagerPortalScreen> {
   int _selectedIndex = 0;
   Map<String, dynamic>? _adminData;
   bool _isAdminLoggedIn = false;
-  
+
   @override
   void initState() {
     super.initState();
@@ -63,18 +63,12 @@ class _ManagerPortalScreenState extends State<ManagerPortalScreen> {
               const SizedBox(height: 24),
               const Text(
                 'Admin Dashboard',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               Text(
                 'Login required to access admin features',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
@@ -150,10 +144,7 @@ class _ManagerPortalScreenState extends State<ManagerPortalScreen> {
             ),
         ],
       ),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _screens,
-      ),
+      body: IndexedStack(index: _selectedIndex, children: _screens),
       bottomNavigationBar: BottomNavigationBar(
         elevation: 8,
         backgroundColor: Colors.white,
