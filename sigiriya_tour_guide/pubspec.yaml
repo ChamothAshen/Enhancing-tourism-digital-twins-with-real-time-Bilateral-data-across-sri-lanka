@@ -38,6 +38,12 @@ dependencies:
   google_maps_flutter: ^2.14.0
   flutter_3d_controller: ^2.3.0
   http: ^1.2.0
+  flutter_map: ^6.1.0
+  latlong2: ^0.9.1
+  flutter_tts: ^4.2.2
+  provider: ^6.1.2
+  url_launcher: ^6.3.1
+  fl_chart: ^1.1.1
 
 dev_dependencies:
   flutter_test:
@@ -64,6 +70,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/
+    - assets/images/
     - assets/test.glb
     - assets/Duck.glb
     - assets/viewer.html
