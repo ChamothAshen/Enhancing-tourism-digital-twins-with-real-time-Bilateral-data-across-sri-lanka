@@ -159,23 +159,28 @@ class _FeedbackDashboardScreenState extends State<FeedbackDashboardScreen> {
                   const mainAxisSpacing = 12.0;
                   const crossAxisSpacing = 12.0;
                   const childAspectRatio = 0.95;
-                  
-                  final itemWidth = (constraints.maxWidth - crossAxisSpacing * (crossAxisCount - 1)) / crossAxisCount;
+
+                  final itemWidth =
+                      (constraints.maxWidth -
+                          crossAxisSpacing * (crossAxisCount - 1)) /
+                      crossAxisCount;
                   final itemHeight = itemWidth / childAspectRatio;
                   final rows = (issueTypes.length / crossAxisCount).ceil();
-                  final gridHeight = (itemHeight * rows) + (mainAxisSpacing * (rows - 1));
-                  
+                  final gridHeight =
+                      (itemHeight * rows) + (mainAxisSpacing * (rows - 1));
+
                   return SizedBox(
                     height: gridHeight,
                     child: GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: crossAxisCount,
-                        mainAxisSpacing: mainAxisSpacing,
-                        crossAxisSpacing: crossAxisSpacing,
-                        childAspectRatio: childAspectRatio,
-                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: crossAxisCount,
+                            mainAxisSpacing: mainAxisSpacing,
+                            crossAxisSpacing: crossAxisSpacing,
+                            childAspectRatio: childAspectRatio,
+                          ),
                       itemCount: issueTypes.length,
                       itemBuilder: (context, index) {
                         final issueType = issueTypes[index];
