@@ -6,15 +6,17 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class WeatherService {
   // Load API key from .env file
   static String get _apiKey => dotenv.env['OPENWEATHER_API_KEY'] ?? '';
-  static const double _lat = 7.957;
-  static const double _lon = 80.76;
   static const String _baseUrl =
       'https://api.openweathermap.org/data/2.5/weather';
 
-  Future<WeatherData?> fetchWeather() async {
+  // Fetch weather for any location (defaults to Sigiriya if not specified)
+  Future<WeatherData?> fetchWeather({
+    double lat = 7.957,
+    double lon = 80.76,
+  }) async {
     try {
       final url = Uri.parse(
-        '$_baseUrl?lat=$_lat&lon=$_lon&appid=$_apiKey&units=metric',
+        '$_baseUrl?lat=$lat&lon=$lon&appid=$_apiKey&units=metric',
       );
       final response = await http.get(url);
 
