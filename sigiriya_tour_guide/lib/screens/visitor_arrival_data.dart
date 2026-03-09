@@ -247,6 +247,9 @@ class VisitorArrivalDataManager {
 
     final topCountries =
         countryTotals.entries
+            .where(
+              (e) => e.key.toLowerCase() != 'other',
+            ) // Exclude 'Other' category
             .map(
               (e) => CountryStats(
                 country: e.key,

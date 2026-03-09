@@ -430,50 +430,29 @@ class _IssueTypeCard extends StatelessWidget {
                           },
                         ),
                 ),
-                // Action buttons
+                // Action button
                 Padding(
                   padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      if (hasMore)
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => IssueDetailScreen(
-                                    issueType: issueType,
-                                    dataManager: dataManager,
-                                  ),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.expand_more),
-                            label: Text('See ${totalCount - 3} more'),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => IssueDetailScreen(
+                              issueType: issueType,
+                              dataManager: dataManager,
+                            ),
                           ),
-                        ),
-                      if (hasMore) const SizedBox(width: 12),
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => IssueDetailScreen(
-                                  issueType: issueType,
-                                  dataManager: dataManager,
-                                ),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.visibility),
-                          label: const Text('View All'),
-                        ),
+                        );
+                      },
+                      icon: const Icon(Icons.visibility),
+                      label: Text(
+                        hasMore ? 'View All ($totalCount)' : 'View All',
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ],

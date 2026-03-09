@@ -52,7 +52,7 @@ class FeedbackItem {
           reviewText: 'Invalid row',
           rating: 1,
           date: DateTime.now().toString(),
-          category: 'Other Complaints',
+          category: 'Unknown',
           confidence: 0.0,
         );
       }
@@ -73,7 +73,7 @@ class FeedbackItem {
         reviewText: 'Parse error',
         rating: 1,
         date: DateTime.now().toString(),
-        category: 'Other Complaints',
+        category: 'Unknown',
         confidence: 0.0,
       );
     }
@@ -105,7 +105,7 @@ class Solution {
         return Solution(
           country: 'Unknown',
           touristSite: 'Unknown',
-          issueType: 'Other Complaints',
+          issueType: 'Unknown',
           problem: 'Unknown',
           solution: 'N/A',
           solutionDescription: 'N/A',
@@ -125,7 +125,7 @@ class Solution {
       return Solution(
         country: 'Unknown',
         touristSite: 'Unknown',
-        issueType: 'Other Complaints',
+        issueType: 'Unknown',
         problem: 'Parse error',
         solution: 'N/A',
         solutionDescription: 'N/A',
@@ -167,13 +167,6 @@ final List<IssueType> issueTypes = [
         'Concerns about ticket prices, foreigner pricing, and value for money',
     icon: Icons.attach_money,
     color: const Color(0xFF9C27B0),
-  ),
-  IssueType(
-    id: 'Other Complaints',
-    name: 'Other Complaints',
-    description: 'Miscellaneous issues and general complaints',
-    icon: Icons.report_problem,
-    color: const Color(0xFF607D8B),
   ),
   IssueType(
     id: 'Overrated',
