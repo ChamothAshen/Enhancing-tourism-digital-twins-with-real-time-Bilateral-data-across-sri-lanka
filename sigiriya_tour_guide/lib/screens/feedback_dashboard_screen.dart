@@ -6,7 +6,8 @@ class FeedbackDashboardScreen extends StatefulWidget {
   const FeedbackDashboardScreen({super.key});
 
   @override
-  State<FeedbackDashboardScreen> createState() => _FeedbackDashboardScreenState();
+  State<FeedbackDashboardScreen> createState() =>
+      _FeedbackDashboardScreenState();
 }
 
 class _FeedbackDashboardScreenState extends State<FeedbackDashboardScreen> {
@@ -20,9 +21,18 @@ class _FeedbackDashboardScreenState extends State<FeedbackDashboardScreen> {
   }
 
   Future<void> _loadData() async {
+    setState(() => _isLoading = true);
     await _dataManager.loadData();
     if (mounted) {
       setState(() => _isLoading = false);
+      debugPrint('=== Feedback Dashboard Stats ===');
+      debugPrint(
+        'Total feedbacks loaded: ${_dataManager.getTotalFeedbackCount()}',
+      );
+      for (var issueType in issueTypes) {
+        debugPrint('${issueType.name}: ${issueType.feedbackCount} feedbacks');
+      }
+      debugPrint('================================');
     }
   }
 
@@ -154,11 +164,9 @@ class _FeedbackDashboardScreenState extends State<FeedbackDashboardScreen> {
                 itemCount: issueTypes.length,
                 itemBuilder: (context, index) {
                   final issueType = issueTypes[index];
-                  final uniqueSolutions = _dataManager.getUniqueSolutionsByIssueType(issueType.id);
                   return _IssueTypeCard(
                     issueType: issueType,
                     dataManager: _dataManager,
-                    solutionCount: uniqueSolutions.length,
                   );
                 },
               ),
@@ -215,24 +223,22 @@ class _FeedbackDashboardScreenState extends State<FeedbackDashboardScreen> {
 class _IssueTypeCard extends StatelessWidget {
   final IssueType issueType;
   final FeedbackDataManager dataManager;
-  final int solutionCount;
 
-  const _IssueTypeCard({
-    required this.issueType,
-    required this.dataManager,
-    required this.solutionCount,
-  });
+  const _IssueTypeCard({required this.issueType, required this.dataManager});
 
   @override
   Widget build(BuildContext context) {
     final feedbackList = dataManager.getFeedbacksByCategory(issueType.id);
     final top3 = feedbackList.take(3).toList();
 
+    // Debug logging
+    debugPrint(
+      'Card: ${issueType.name} - ${issueType.feedbackCount} total, ${feedbackList.length} retrieved',
+    );
+
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () => _showPreviewDialog(context, top3, feedbackList.length),
         borderRadius: BorderRadius.circular(16),
@@ -267,7 +273,7 @@ class _IssueTypeCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      '$solutionCount',
+                      '${issueType.feedbackCount}',
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -292,10 +298,7 @@ class _IssueTypeCard extends StatelessWidget {
               // Description
               Text(
                 issueType.description,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -303,18 +306,11 @@ class _IssueTypeCard extends StatelessWidget {
               // Tap hint
               Row(
                 children: [
-                  Icon(
-                    Icons.touch_app,
-                    size: 14,
-                    color: Colors.grey[400],
-                  ),
+                  Icon(Icons.touch_app, size: 14, color: Colors.grey[400]),
                   const SizedBox(width: 4),
                   Text(
                     'Tap to preview',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.grey[400],
-                    ),
+                    style: TextStyle(fontSize: 10, color: Colors.grey[400]),
                   ),
                 ],
               ),
@@ -325,7 +321,11 @@ class _IssueTypeCard extends StatelessWidget {
     );
   }
 
-  void _showPreviewDialog(BuildContext context, List<FeedbackItem> top3, int totalCount) {
+  void _showPreviewDialog(
+    BuildContext context,
+    List<FeedbackItem> top3,
+    int totalCount,
+  ) {
     final hasMore = totalCount > 3;
 
     showModalBottomSheet(
@@ -364,10 +364,7 @@ class _IssueTypeCard extends StatelessWidget {
                           color: issueType.color.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Icon(
-                          issueType.icon,
-                          color: issueType.color,
-                        ),
+                        child: Icon(issueType.icon, color: issueType.color),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -406,7 +403,11 @@ class _IssueTypeCard extends StatelessWidget {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.inbox, size: 48, color: Colors.grey[300]),
+                              Icon(
+                                Icons.inbox,
+                                size: 48,
+                                color: Colors.grey[300],
+                              ),
                               const SizedBox(height: 12),
                               Text(
                                 'No feedbacks in this category',
@@ -536,10 +537,7 @@ class _FeedbackPreviewCard extends StatelessWidget {
               const Spacer(),
               Text(
                 _formatDate(feedback.date),
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey[500],
-                ),
+                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
               ),
             ],
           ),
@@ -562,10 +560,7 @@ class _FeedbackPreviewCard extends StatelessWidget {
               const SizedBox(width: 4),
               Text(
                 'Confidence: ${(feedback.confidence * 100).toStringAsFixed(0)}%',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
               ),
             ],
           ),
@@ -584,8 +579,18 @@ class _FeedbackPreviewCard extends StatelessWidget {
     try {
       final date = DateTime.parse(dateStr.split(' ')[0]);
       const months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
       ];
       return '${months[date.month - 1]} ${date.day}, ${date.year}';
     } catch (_) {

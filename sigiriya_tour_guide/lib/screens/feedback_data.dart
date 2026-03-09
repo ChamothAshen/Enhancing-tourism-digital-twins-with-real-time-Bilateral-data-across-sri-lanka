@@ -212,8 +212,11 @@ class FeedbackDataManager {
   List<FeedbackItem> get feedbacks => _feedbacks;
   List<Solution> get solutions => _solutions;
 
-  Future<void> loadData() async {
-    if (_isLoaded) return;
+  Future<void> loadData({bool forceReload = false}) async {
+    if (_isLoaded && !forceReload) {
+      debugPrint('Data already loaded, skipping...');
+      return;
+    }
 
     try {
       debugPrint('Loading feedback data from CSV files...');
@@ -226,17 +229,34 @@ class FeedbackDataManager {
         'Feedbacks CSV loaded, length: ${feedbacksCsv.length} characters',
       );
 
-      List<List<dynamic>> feedbackRows = const CsvToListConverter().convert(
-        feedbacksCsv,
-      );
+      // Use CSV converter with proper configuration for quoted fields
+      List<List<dynamic>> feedbackRows = const CsvToListConverter(
+        fieldDelimiter: ',',
+        textDelimiter: '"',
+        textEndDelimiter: '"',
+        eol: '\n',
+        shouldParseNumbers: false,
+      ).convert(feedbacksCsv);
       debugPrint('CSV converted to ${feedbackRows.length} rows');
 
       // Skip header row
       _feedbacks = feedbackRows
           .skip(1)
           .map((row) => FeedbackItem.fromCsvRow(row))
+          .where((item) => item.reviewId > 0) // Filter out invalid items
           .toList();
-      debugPrint('Loaded ${_feedbacks.length} feedback items');
+      debugPrint(
+        'Loaded ${_feedbacks.length} feedback items from ${feedbackRows.length - 1} rows',
+      );
+
+      // Debug: Show sample of categories found
+      if (_feedbacks.isNotEmpty) {
+        final sampleCategories = _feedbacks
+            .take(5)
+            .map((f) => f.category)
+            .toList();
+        debugPrint('Sample categories: $sampleCategories');
+      }
 
       // Load solutions CSV
       final solutionsCsv = await rootBundle.loadString(
@@ -246,9 +266,13 @@ class FeedbackDataManager {
         'Solutions CSV loaded, length: ${solutionsCsv.length} characters',
       );
 
-      List<List<dynamic>> solutionRows = const CsvToListConverter().convert(
-        solutionsCsv,
-      );
+      List<List<dynamic>> solutionRows = const CsvToListConverter(
+        fieldDelimiter: ',',
+        textDelimiter: '"',
+        textEndDelimiter: '"',
+        eol: '\n',
+        shouldParseNumbers: false,
+      ).convert(solutionsCsv);
       debugPrint('CSV converted to ${solutionRows.length} solution rows');
 
       // Skip header row
@@ -266,12 +290,21 @@ class FeedbackDataManager {
       }
 
       // Update feedback counts for each issue type
+      debugPrint('=== Counting feedbacks by category ===');
+      int totalCounted = 0;
       for (var issueType in issueTypes) {
         issueType.feedbackCount = _feedbacks
-            .where((f) => f.category == issueType.id)
+            .where(
+              (f) =>
+                  f.category.trim().toLowerCase() ==
+                  issueType.id.trim().toLowerCase(),
+            )
             .length;
-        debugPrint('${issueType.name}: ${issueType.feedbackCount} feedbacks');
+        totalCounted += issueType.feedbackCount;
+        debugPrint('${issueType.id}: ${issueType.feedbackCount} feedbacks');
       }
+      debugPrint('Total counted: $totalCounted out of ${_feedbacks.length}');
+      debugPrint('====================================');
 
       _isLoaded = true;
       debugPrint('Data loading completed successfully');
@@ -376,7 +409,13 @@ class FeedbackDataManager {
   }
 
   List<Solution> getSolutionsByIssueType(String issueType) {
-    return _solutions.where((s) => s.issueType == issueType).toList();
+    return _solutions
+        .where(
+          (s) =>
+              s.issueType.trim().toLowerCase() ==
+              issueType.trim().toLowerCase(),
+        )
+        .toList();
   }
 
   IssueType? getIssueTypeById(String id) {
