@@ -1,10 +1,16 @@
+<<<<<<< HEAD
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+=======
+﻿import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+>>>>>>> dinusha-merge
 import 'package:sigiriya_tour_guide/screens/map_screen.dart';
 import 'package:sigiriya_tour_guide/theme/app_theme.dart';
 import 'package:sigiriya_tour_guide/providers/chat_provider.dart';
 import 'model_viewer_screen.dart';
+<<<<<<< HEAD
 import 'screens/feedback_dashboard_screen.dart';
 import 'screens/visitor_arrival_screen.dart';
 
@@ -13,6 +19,11 @@ Future<void> main() async {
   await dotenv.load(fileName: ".env");
   runApp(const MyApp());
 }
+=======
+import 'screens/chat_screen.dart';
+
+void main() => runApp(const MyApp());
+>>>>>>> dinusha-merge
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -20,7 +31,13 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
+<<<<<<< HEAD
       providers: [ChangeNotifierProvider(create: (_) => ChatProvider())],
+=======
+      providers: [
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
+      ],
+>>>>>>> dinusha-merge
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Sigiriya Tour Guide',
@@ -44,15 +61,23 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final List<Widget> _screens = [
     const MapScreen(),
     const ModelViewerScreen(),
+<<<<<<< HEAD
     const FeedbackDashboardScreen(),
     const VisitorArrivalScreen(),
+=======
+    const ChatScreen(),
+>>>>>>> dinusha-merge
   ];
 
   final List<String> _titles = [
     'Sigiriya Map Guide',
     '3D Model Viewer',
+<<<<<<< HEAD
     'Feedback Analysis',
     'Visitor Analytics',
+=======
+    'Tour Planner',
+>>>>>>> dinusha-merge
   ];
 
   void _onItemTapped(int index) {
@@ -64,7 +89,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+<<<<<<< HEAD
       body: IndexedStack(index: _selectedIndex, children: _screens),
+=======
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _screens,
+      ),
+>>>>>>> dinusha-merge
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
@@ -78,7 +110,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         child: BottomNavigationBar(
           elevation: 0,
           backgroundColor: Colors.white,
+<<<<<<< HEAD
           type: BottomNavigationBarType.fixed,
+=======
+>>>>>>> dinusha-merge
           items: const <BottomNavigationBarItem>[
             BottomNavigationBarItem(
               icon: Icon(Icons.map_outlined),
@@ -91,6 +126,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               label: '3D Model',
             ),
             BottomNavigationBarItem(
+<<<<<<< HEAD
               icon: Icon(Icons.analytics_outlined),
               activeIcon: Icon(Icons.analytics),
               label: 'Feedback',
@@ -105,6 +141,21 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           selectedItemColor: Theme.of(context).primaryColor,
           unselectedItemColor: Colors.grey,
           onTap: _onItemTapped,
+=======
+              icon: Icon(Icons.chat_bubble_outline_rounded),
+              activeIcon: Icon(Icons.chat_bubble),
+              label: 'Guide',
+              tooltip: 'Chat with AI guide',
+            ),
+          ],
+          currentIndex: _selectedIndex,
+          selectedItemColor: AppTheme.primaryGreen,
+          unselectedItemColor: Colors.grey,
+          type: BottomNavigationBarType.fixed,
+          onTap: _onItemTapped,
+          showSelectedLabels: true,
+          showUnselectedLabels: true,
+>>>>>>> dinusha-merge
         ),
       ),
     );
