@@ -5,6 +5,12 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_3d_controller/flutter_3d_controller.dart';
+import 'package:http/http.dart' as http;
+import 'package:sigiriya_tour_guide/theme/app_theme.dart';
 
 enum TimePreset { day, evening, night }
 
@@ -26,6 +32,15 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
 
   // Chat interface variables removed
 
+  // Chat interface
+  bool isChatOpen = false;
+  final TextEditingController _chatController = TextEditingController();
+  final ValueNotifier<List<ChatMessage>> _messages = ValueNotifier([]);
+  bool isApiHealthy = false;
+
+  // API URL: Use 10.0.2.2 for Android Emulator, localhost for web/desktop
+  // API URL: Use your computer's IP address (10.60.14.73) so your phone can reach the server
+  static const String apiBaseUrl = 'http://172.28.26.66:8000';
 
   @override
   void initState() {
@@ -36,6 +51,127 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
   }
 
 
+    _checkApiHealth();
+  }
+
+  Future<void> _checkApiHealth() async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse('$apiBaseUrl/health'),
+            headers: {'accept': 'application/json'},
+          )
+          .timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        setState(() {
+          isApiHealthy = true;
+        });
+        debugPrint('API Health Check: Healthy');
+      } else {
+        setState(() {
+          isApiHealthy = false;
+        });
+        debugPrint(
+          'API Health Check: Unhealthy (Status: ${response.statusCode})',
+        );
+      }
+    } catch (e) {
+      setState(() {
+        isApiHealthy = false;
+      });
+      debugPrint('API Health Check Failed: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _chatController.dispose();
+    _messages.dispose();
+    super.dispose();
+  }
+
+  void _sendMessage() async {
+    if (_chatController.text.trim().isEmpty) return;
+
+    final userMessage = _chatController.text;
+    _messages.value = [
+      ..._messages.value,
+      ChatMessage(text: userMessage, isUser: true, timestamp: DateTime.now()),
+    ];
+    _chatController.clear();
+
+    // Call the chat API
+    try {
+      debugPrint('Sending chat message to: $apiBaseUrl/chat');
+      debugPrint('Message content: $userMessage');
+
+      final response = await http
+          .post(
+            Uri.parse('$apiBaseUrl/chat'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'message': userMessage}),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      debugPrint('Chat API response status: ${response.statusCode}');
+      debugPrint('Chat API response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (mounted) {
+          _messages.value = [
+            ..._messages.value,
+            ChatMessage(
+              text: data['assistant_response'] ?? 'No response',
+              isUser: false,
+              timestamp: DateTime.now(),
+            ),
+          ];
+        }
+      } else {
+        if (mounted) {
+          _messages.value = [
+            ..._messages.value,
+            ChatMessage(
+              text:
+                  'Error: Unable to get response (Status: ${response.statusCode})\nResponse: ${response.body}',
+              isUser: false,
+              timestamp: DateTime.now(),
+            ),
+          ];
+        }
+      }
+    } catch (e) {
+      debugPrint('Chat API Exception: $e');
+      if (mounted) {
+        _messages.value = [
+          ..._messages.value,
+          ChatMessage(
+            text:
+                'Error: Could not connect to server.\n\nDetails: $e\n\nTip: If running on Android emulator, use 10.0.2.2 instead of localhost',
+            isUser: false,
+            timestamp: DateTime.now(),
+          ),
+        ];
+      }
+      debugPrint('Chat API Error: $e');
+    }
+  }
+
+  void _showChatBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _ChatBottomSheetContent(
+        messagesNotifier: _messages,
+        chatController: _chatController,
+        isApiHealthy: isApiHealthy,
+        onSendMessage: _sendMessage,
+      ),
+    );
+  }
 
   BoxDecoration _backgroundForPreset() {
     switch (preset) {
@@ -84,6 +220,11 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
   Widget build(BuildContext context) {
     return Scaffold(
 
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showChatBottomSheet(context),
+        backgroundColor: AppTheme.primaryGreen,
+        child: const Icon(Icons.chat, color: Colors.white),
+      ),
       body: Container(
         decoration: _backgroundForPreset(),
         width: double.infinity,
@@ -207,6 +348,7 @@ class FogOverlay extends StatelessWidget {
         ),
         child: Container(
           color: Colors.white.withOpacity(0.10), // haze
+          color: Colors.white.withValues(alpha: 0.10), // haze
         ),
       ),
     );
@@ -300,6 +442,7 @@ class _RainPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = Colors.lightBlueAccent.withOpacity(0.55)
+      ..color = Colors.lightBlueAccent.withValues(alpha: 0.55)
       ..strokeWidth = 1.2
       ..strokeCap = StrokeCap.round;
 
@@ -316,3 +459,203 @@ class _RainPainter extends CustomPainter {
 }
 
 
+class ChatMessage {
+  final String text;
+  final bool isUser;
+  final DateTime timestamp;
+
+  ChatMessage({
+    required this.text,
+    required this.isUser,
+    required this.timestamp,
+  });
+}
+
+class _ChatBottomSheetContent extends StatefulWidget {
+  final ValueNotifier<List<ChatMessage>> messagesNotifier;
+  final TextEditingController chatController;
+  final bool isApiHealthy;
+  final VoidCallback onSendMessage;
+
+  const _ChatBottomSheetContent({
+    required this.messagesNotifier,
+    required this.chatController,
+    required this.isApiHealthy,
+    required this.onSendMessage,
+  });
+
+  @override
+  State<_ChatBottomSheetContent> createState() =>
+      _ChatBottomSheetContentState();
+}
+
+class _ChatBottomSheetContentState extends State<_ChatBottomSheetContent> {
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.3,
+      maxChildSize: 0.9,
+      builder: (context, scrollController) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            // Drag Handle
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Chat Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                color: AppTheme.primaryGreen,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.chat, color: Colors.white),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Tour Guide Chat',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Health status indicator
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: widget.isApiHealthy ? Colors.green : Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            // Messages List
+            Expanded(
+              child: ValueListenableBuilder<List<ChatMessage>>(
+                valueListenable: widget.messagesNotifier,
+                builder: (context, messages, child) {
+                  return messages.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'Start a conversation!',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        )
+                      : ListView.builder(
+                          controller: scrollController,
+                          padding: const EdgeInsets.all(16),
+                          itemCount: messages.length,
+                          itemBuilder: (context, index) {
+                            final message = messages[index];
+                            return _ChatBubble(message: message);
+                          },
+                        );
+                },
+              ),
+            ),
+            // Input Field
+            Container(
+              padding: EdgeInsets.only(
+                left: 12,
+                right: 12,
+                top: 12,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 12,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                border: const Border(
+                  top: BorderSide(color: Colors.grey, width: 1),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: widget.chatController,
+                      decoration: InputDecoration(
+                        hintText: 'Type a message...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                      ),
+                      onSubmitted: (_) {
+                        widget.onSendMessage();
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.send),
+                    color: AppTheme.primaryGreen,
+                    onPressed: widget.onSendMessage,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChatBubble extends StatelessWidget {
+  final ChatMessage message;
+
+  const _ChatBubble({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Align(
+        alignment: message.isUser
+            ? Alignment.centerRight
+            : Alignment.centerLeft,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 280),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: message.isUser ? const Color(0xff0d2039) : Colors.grey[200],
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: SelectableText(
+            message.text,
+            style: TextStyle(
+              color: message.isUser ? Colors.white : Colors.black87,
+              fontSize: 14,
+              height: 1.4,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

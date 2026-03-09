@@ -15,6 +15,10 @@ subprojects {
 subprojects {
     project.evaluationDependsOn(":app")
 }
+// Commented out to avoid NDK dependency issues
+// subprojects {
+//     project.evaluationDependsOn(":app")
+// }
 
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
