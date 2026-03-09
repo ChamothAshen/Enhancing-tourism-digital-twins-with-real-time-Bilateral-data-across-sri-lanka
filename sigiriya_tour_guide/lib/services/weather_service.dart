@@ -15,16 +15,29 @@ class WeatherService {
     double lon = 80.76,
   }) async {
     try {
+      debugPrint(
+        'Weather API Key loaded: ${_apiKey.isNotEmpty ? "YES (${_apiKey.length} chars)" : "NO - EMPTY!"}',
+      );
+
       final url = Uri.parse(
         '$_baseUrl?lat=$lat&lon=$lon&appid=$_apiKey&units=metric',
       );
+
+      debugPrint('Fetching weather from: $url');
       final response = await http.get(url);
+
+      debugPrint('Weather API Response: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        debugPrint(
+          'Weather data received: ${data['weather']?[0]?['main']} - ${data['main']?['temp']}°C',
+        );
         return WeatherData.fromJson(data);
       } else {
-        debugPrint('Failed to load weather: ${response.statusCode}');
+        debugPrint(
+          'Failed to load weather: ${response.statusCode} - ${response.body}',
+        );
         return null;
       }
     } catch (e) {
