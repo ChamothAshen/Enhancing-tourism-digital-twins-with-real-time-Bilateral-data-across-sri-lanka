@@ -1,8 +1,10 @@
 import 'dart:math';
 import 'dart:ui';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_3d_controller/flutter_3d_controller.dart';
+
 
 enum TimePreset { day, evening, night }
 
@@ -22,6 +24,9 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
   bool isFoggy = false;
   TimePreset preset = TimePreset.day;
 
+  // Chat interface variables removed
+
+
   @override
   void initState() {
     super.initState();
@@ -29,6 +34,8 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
       debugPrint('model is loaded : ${controller.onModelLoaded.value}');
     });
   }
+
+
 
   BoxDecoration _backgroundForPreset() {
     switch (preset) {
@@ -76,6 +83,7 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+
       body: Container(
         decoration: _backgroundForPreset(),
         width: double.infinity,
@@ -198,7 +206,7 @@ class FogOverlay extends StatelessWidget {
           sigmaY: enabled ? 6 : 0,
         ),
         child: Container(
-          color: Colors.white.withValues(alpha: 0.10),
+          color: Colors.white.withOpacity(0.10), // haze
         ),
       ),
     );
@@ -254,6 +262,7 @@ class _RainOverlayState extends State<RainOverlay>
   @override
   void didUpdateWidget(covariant RainOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // keep controller running; we just stop drawing when disabled
   }
 
   @override
@@ -290,7 +299,7 @@ class _RainPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.lightBlueAccent.withValues(alpha: 0.55)
+      ..color = Colors.lightBlueAccent.withOpacity(0.55)
       ..strokeWidth = 1.2
       ..strokeCap = StrokeCap.round;
 
@@ -305,3 +314,5 @@ class _RainPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _RainPainter oldDelegate) => true;
 }
+
+
