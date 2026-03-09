@@ -59,67 +59,22 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   ];
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    if (index == 3) {
+      // Manager tab - navigate to admin login
+      Navigator.pushNamed(context, '/manager');
+    } else {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          IndexedStack(
-            index: _selectedIndex,
-            children: _screens,
-          ),
-          // Manager button - Top Right (non-overlapping)
-          Positioned(
-            top: 50,
-            right: 20,
-            child: GestureDetector(
-              onTap: () {
-                Navigator.pushNamed(context, '/manager');
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryGreen,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(
-                      Icons.manage_accounts,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Manager',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _screens,
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -150,6 +105,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               activeIcon: Icon(Icons.chat_bubble),
               label: 'Guide',
               tooltip: 'Chat with AI guide',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.manage_accounts_outlined),
+              activeIcon: Icon(Icons.manage_accounts),
+              label: 'Manager',
+              tooltip: 'Admin & Analytics',
             ),
           ],
           currentIndex: _selectedIndex,
