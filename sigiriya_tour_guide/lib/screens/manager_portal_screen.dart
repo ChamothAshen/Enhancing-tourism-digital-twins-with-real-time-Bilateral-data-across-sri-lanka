@@ -72,19 +72,13 @@ class _ManagerPortalScreenState extends State<ManagerPortalScreen> {
             const SizedBox(height: 32),
             const Text(
               'Welcome to Manager Portal',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             Text(
               'Select an option from the menu to view analytics',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 48),
@@ -163,10 +157,7 @@ class _ManagerPortalScreenState extends State<ManagerPortalScreen> {
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                     ),
                   ],
                 ),
@@ -198,8 +189,10 @@ class _ManagerPortalScreenState extends State<ManagerPortalScreen> {
               const SizedBox(height: 24),
               Text(
                 feature,
-                style:
-                    const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
@@ -291,21 +284,14 @@ class _ManagerPortalScreenState extends State<ManagerPortalScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF3D4E5C),
-                    Color(0xFF556B7D),
-                  ],
+                  colors: [Color(0xFF3D4E5C), Color(0xFF556B7D)],
                 ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  const Icon(
-                    Icons.dashboard,
-                    size: 48,
-                    color: Colors.white,
-                  ),
+                  const Icon(Icons.dashboard, size: 48, color: Colors.white),
                   const SizedBox(height: 12),
                   const Text(
                     'Manager Portal',
@@ -320,16 +306,16 @@ class _ManagerPortalScreenState extends State<ManagerPortalScreen> {
                     _isAdminLoggedIn
                         ? 'Admin: ${_adminData?['name'] ?? 'Manager'}'
                         : 'Analytics Dashboard',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                    ),
+                    style: const TextStyle(color: Colors.white70, fontSize: 14),
                   ),
                 ],
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.home_outlined, color: Color(0xFF5E6E7C)),
+              leading: const Icon(
+                Icons.home_outlined,
+                color: Color(0xFF5E6E7C),
+              ),
               title: const Text('Overview'),
               selected: _currentView == 'overview',
               onTap: () {
@@ -357,7 +343,10 @@ class _ManagerPortalScreenState extends State<ManagerPortalScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.analytics_outlined, color: Color(0xFF8B956D)),
+              leading: const Icon(
+                Icons.analytics_outlined,
+                color: Color(0xFF8B956D),
+              ),
               title: const Text('Feedback Sentiment Analysis'),
               selected: _currentView == 'feedback',
               onTap: () {
@@ -366,7 +355,10 @@ class _ManagerPortalScreenState extends State<ManagerPortalScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.bar_chart_outlined, color: Color(0xFF7D6B91)),
+              leading: const Icon(
+                Icons.bar_chart_outlined,
+                color: Color(0xFF7D6B91),
+              ),
               title: const Text('Visitor Arrival Analysis'),
               selected: _currentView == 'visitors',
               onTap: () {
