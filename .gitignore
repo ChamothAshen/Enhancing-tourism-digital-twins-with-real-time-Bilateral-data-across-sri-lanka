@@ -33,8 +33,9 @@ Croud/TourismDigitalCC/detection_results/*.png
 # ===========================
 # Flutter / Dart
 # ===========================
-# This folder contains only build artifacts (no source code)
-sigiriya_tour_guide/
+# Flutter build artifacts
+sigiriya_tour_guide/build/
+sigiriya_tour_guide/.dart_tool/
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
