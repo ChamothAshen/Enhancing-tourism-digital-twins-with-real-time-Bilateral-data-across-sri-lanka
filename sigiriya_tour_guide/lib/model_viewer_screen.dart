@@ -946,39 +946,34 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
                 const Divider(),
                 const SizedBox(height: 8),
                 // Preset locations
-                ..._presetLocations.map((loc) => ListTile(
-                      dense: true,
-                      leading: const Icon(Icons.location_on, size: 20),
-                      title: Text(
-                        loc['name'],
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                      subtitle: Text(
-                        'Lat: ${loc['lat']}, Lon: ${loc['lon']}',
-                        style: const TextStyle(fontSize: 11),
-                      ),
-                      trailing: _currentLat == loc['lat'] &&
-                              _currentLon == loc['lon']
-                          ? const Icon(Icons.check_circle, color: Colors.teal)
-                          : null,
-                      onTap: () {
-                        Navigator.pop(context);
-                        _updateLocation(
-                          loc['lat'],
-                          loc['lon'],
-                          loc['name'],
-                        );
-                      },
-                    )),
+                ..._presetLocations.map(
+                  (loc) => ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.location_on, size: 20),
+                    title: Text(
+                      loc['name'],
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    subtitle: Text(
+                      'Lat: ${loc['lat']}, Lon: ${loc['lon']}',
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                    trailing:
+                        _currentLat == loc['lat'] && _currentLon == loc['lon']
+                        ? const Icon(Icons.check_circle, color: Colors.teal)
+                        : null,
+                    onTap: () {
+                      Navigator.pop(context);
+                      _updateLocation(loc['lat'], loc['lon'], loc['name']);
+                    },
+                  ),
+                ),
                 const Divider(),
                 const SizedBox(height: 8),
                 // Custom input
                 const Text(
                   'Custom Coordinates:',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                 ),
                 const SizedBox(height: 8),
                 TextField(
@@ -1074,9 +1069,7 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
           children: [
             const Icon(Icons.cloud_download, color: Colors.white),
             const SizedBox(width: 8),
-            Expanded(
-              child: Text('Fetching weather for $name...'),
-            ),
+            Expanded(child: Text('Fetching weather for $name...')),
           ],
         ),
         duration: const Duration(seconds: 2),
