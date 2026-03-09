@@ -63,7 +63,8 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => ManagerPortalScreen(initialAdminData: adminData),
+            builder: (context) =>
+                ManagerPortalScreen(initialAdminData: adminData),
           ),
         );
       } else {

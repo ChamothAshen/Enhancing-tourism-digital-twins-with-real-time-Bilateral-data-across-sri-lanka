@@ -20,17 +20,13 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => ChatProvider()),
-      ],
+      providers: [ChangeNotifierProvider(create: (_) => ChatProvider())],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Sigiriya Tour Guide',
         theme: AppTheme.lightTheme,
         home: const MainNavigationScreen(),
-        routes: {
-          '/manager': (context) => const AdminLoginScreen(),
-        },
+        routes: {'/manager': (context) => const AdminLoginScreen()},
       ),
     );
   }
@@ -72,10 +68,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _screens,
-      ),
+      body: IndexedStack(index: _selectedIndex, children: _screens),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
