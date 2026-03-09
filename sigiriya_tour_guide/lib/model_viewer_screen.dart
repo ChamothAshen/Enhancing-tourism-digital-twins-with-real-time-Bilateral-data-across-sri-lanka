@@ -42,6 +42,25 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
 
   double? currentTemp; // Store current temperature
 
+  // Location tracking for weather visualization
+  double _currentLat = 7.957; // Default: Sigiriya
+  double _currentLon = 80.76;
+  String _currentLocationName = 'Sigiriya, Sri Lanka';
+
+  // Preset locations for quick demonstration
+  final List<Map<String, dynamic>> _presetLocations = [
+    {'name': 'Sigiriya, Sri Lanka', 'lat': 7.957, 'lon': 80.76},
+    {'name': 'London, UK', 'lat': 51.5074, 'lon': -0.1278},
+    {'name': 'Dubai, UAE', 'lat': 25.2048, 'lon': 55.2708},
+    {'name': 'New York, USA', 'lat': 40.7128, 'lon': -74.0060},
+    {'name': 'Tokyo, Japan', 'lat': 35.6762, 'lon': 139.6503},
+    {'name': 'Sydney, Australia', 'lat': -33.8688, 'lon': 151.2093},
+    {'name': 'Iceland (Reykjavik)', 'lat': 64.1466, 'lon': -21.9426},
+    {'name': 'Amazon Rainforest', 'lat': -3.4653, 'lon': -62.2159},
+    {'name': 'Singapore', 'lat': 1.3521, 'lon': 103.8198},
+    {'name': 'Moscow, Russia', 'lat': 55.7558, 'lon': 37.6173},
+  ];
+
   // Risk prediction state (driven by Railway backend API)
   bool _fogRisk = false;
   bool _slipRisk = false;
@@ -143,7 +162,10 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
   }
 
   Future<void> _fetchWeather() async {
-    final weather = await _weatherService.fetchWeather();
+    final weather = await _weatherService.fetchWeather(
+      lat: _currentLat,
+      lon: _currentLon,
+    );
     if (weather == null || !mounted) return;
 
     setState(() {
@@ -439,7 +461,7 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
     if (rainIntensity != RainIntensity.none) {
       return SkyCondition.rainy;
     }
-    if (cloudiness >= 85) {
+    if (cloudiness >= 90) {
       return SkyCondition.overcast;
     }
     if (cloudiness >= 45) {
@@ -578,11 +600,11 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
             ),
 
             // Cloudiness haze overlay — very subtle, only for very overcast skies
-            if (cloudiness > 70)
+            if (cloudiness > 85)
               IgnorePointer(
                 ignoring: true,
                 child: Opacity(
-                  opacity: ((cloudiness - 70) / 30.0 * 0.12).clamp(0.0, 0.12),
+                  opacity: ((cloudiness - 85) / 15.0 * 0.12).clamp(0.0, 0.12),
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -631,6 +653,29 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Location name
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.place,
+                          color: Colors.lightBlueAccent,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            _currentLocationName,
+                            style: const TextStyle(
+                              color: Colors.lightBlueAccent,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
                     // Temperature
                     Row(
                       children: [
@@ -737,6 +782,12 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
                         ),
                       ),
                       const SizedBox(height: 6),
+                      _debugLine('Location', _currentLocationName),
+                      _debugLine(
+                        'Coordinates',
+                        '${_currentLat.toStringAsFixed(3)}, ${_currentLon.toStringAsFixed(3)}',
+                      ),
+                      const SizedBox(height: 4),
                       _debugLine(
                         'Sky',
                         '${_resolveSkyCondition().name} | ${preset.name}',
@@ -855,6 +906,181 @@ class _ModelViewerScreenState extends State<ModelViewerScreen>
             ),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showLocationPicker,
+        backgroundColor: Colors.teal.withOpacity(0.85),
+        tooltip: 'Change Weather Location',
+        child: const Icon(Icons.public),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
+    );
+  }
+
+  // Show location picker dialog for changing weather visualization
+  void _showLocationPicker() {
+    final TextEditingController latController = TextEditingController();
+    final TextEditingController lonController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.public, color: Colors.teal),
+            SizedBox(width: 8),
+            Text('Change Weather Location'),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Select a preset location or enter custom coordinates:',
+                  style: TextStyle(fontSize: 13, color: Colors.black54),
+                ),
+                const SizedBox(height: 12),
+                const Divider(),
+                const SizedBox(height: 8),
+                // Preset locations
+                ..._presetLocations.map((loc) => ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.location_on, size: 20),
+                      title: Text(
+                        loc['name'],
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      subtitle: Text(
+                        'Lat: ${loc['lat']}, Lon: ${loc['lon']}',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      trailing: _currentLat == loc['lat'] &&
+                              _currentLon == loc['lon']
+                          ? const Icon(Icons.check_circle, color: Colors.teal)
+                          : null,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _updateLocation(
+                          loc['lat'],
+                          loc['lon'],
+                          loc['name'],
+                        );
+                      },
+                    )),
+                const Divider(),
+                const SizedBox(height: 8),
+                // Custom input
+                const Text(
+                  'Custom Coordinates:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: latController,
+                  decoration: const InputDecoration(
+                    labelText: 'Latitude',
+                    hintText: 'e.g., 7.957',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                    signed: true,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: lonController,
+                  decoration: const InputDecoration(
+                    labelText: 'Longitude',
+                    hintText: 'e.g., 80.76',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                    signed: true,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    final lat = double.tryParse(latController.text);
+                    final lon = double.tryParse(lonController.text);
+                    if (lat != null &&
+                        lon != null &&
+                        lat >= -90 &&
+                        lat <= 90 &&
+                        lon >= -180 &&
+                        lon <= 180) {
+                      Navigator.pop(context);
+                      _updateLocation(
+                        lat,
+                        lon,
+                        'Custom (${lat.toStringAsFixed(3)}, ${lon.toStringAsFixed(3)})',
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Invalid coordinates. Lat: -90 to 90, Lon: -180 to 180',
+                          ),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.check),
+                  label: const Text('Apply Custom Location'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Update location and fetch weather for new coordinates
+  void _updateLocation(double lat, double lon, String name) {
+    setState(() {
+      _currentLat = lat;
+      _currentLon = lon;
+      _currentLocationName = name;
+    });
+
+    // Immediately fetch weather for new location
+    _fetchWeather();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.cloud_download, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text('Fetching weather for $name...'),
+            ),
+          ],
+        ),
+        duration: const Duration(seconds: 2),
+        backgroundColor: Colors.teal,
       ),
     );
   }
