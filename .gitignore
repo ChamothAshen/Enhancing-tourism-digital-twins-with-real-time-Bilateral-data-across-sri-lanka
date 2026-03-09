@@ -44,6 +44,10 @@ sigiriya_tour_guide/.dart_tool/
 .pub/
 pubspec.lock
 
+# Environment files (contains API keys)
+**/.env
+.env
+
 # Build outputs
 **/build/
 
@@ -78,6 +82,9 @@ local.properties
 **/ios/Flutter/engine/
 **/ios/ServiceDefinitions.json
 **/ios/Runner/GeneratedPluginRegistrant.*
+**/ios/Flutter/Debug.xcconfig
+**/ios/Flutter/Release.xcconfig
+**/ios/Podfile
 *.xcworkspace
 xcuserdata/
 DerivedData/
@@ -88,6 +95,9 @@ Podfile.lock
 # ===========================
 **/macos/Flutter/ephemeral/
 **/macos/Flutter/GeneratedPluginRegistrant.swift
+**/macos/Flutter/Flutter-Debug.xcconfig
+**/macos/Flutter/Flutter-Release.xcconfig
+**/macos/Podfile
 **/linux/flutter/ephemeral/
 **/windows/flutter/ephemeral/
 
