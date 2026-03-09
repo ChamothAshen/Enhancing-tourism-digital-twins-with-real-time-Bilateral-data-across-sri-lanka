@@ -67,7 +67,7 @@ class _ManagerPortalScreenState extends State<ManagerPortalScreen> {
             Icon(
               Icons.dashboard_outlined,
               size: 100,
-              color: Colors.deepOrange.shade300,
+              color: const Color(0xFF5E6E7C),
             ),
             const SizedBox(height: 32),
             const Text(
@@ -92,7 +92,7 @@ class _ManagerPortalScreenState extends State<ManagerPortalScreen> {
               icon: Icons.cloud_outlined,
               title: 'Future Weather & Crowd',
               subtitle: 'Forecasting and predictions',
-              color: Colors.blue,
+              color: const Color(0xFF5B8A9F),
               onTap: () {
                 setState(() => _currentView = 'forecasting');
               },
@@ -102,7 +102,7 @@ class _ManagerPortalScreenState extends State<ManagerPortalScreen> {
               icon: Icons.analytics_outlined,
               title: 'Feedback Sentiment',
               subtitle: 'Review analysis and insights',
-              color: Colors.green,
+              color: const Color(0xFF8B956D),
               onTap: () {
                 setState(() => _currentView = 'feedback');
               },
@@ -112,7 +112,7 @@ class _ManagerPortalScreenState extends State<ManagerPortalScreen> {
               icon: Icons.bar_chart_outlined,
               title: 'Visitor Arrivals',
               subtitle: 'Tourist statistics and trends',
-              color: Colors.purple,
+              color: const Color(0xFF7D6B91),
               onTap: () {
                 setState(() => _currentView = 'visitors');
               },
@@ -193,7 +193,7 @@ class _ManagerPortalScreenState extends State<ManagerPortalScreen> {
               Icon(
                 Icons.lock_outline,
                 size: 80,
-                color: Colors.deepOrange.shade300,
+                color: const Color(0xFF7A8A99),
               ),
               const SizedBox(height: 24),
               Text(
@@ -227,7 +227,7 @@ class _ManagerPortalScreenState extends State<ManagerPortalScreen> {
                 icon: const Icon(Icons.login),
                 label: const Text('Admin Login'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepOrange,
+                  backgroundColor: const Color(0xFF4A5F73),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 32,
@@ -250,7 +250,7 @@ class _ManagerPortalScreenState extends State<ManagerPortalScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_currentTitle),
-        backgroundColor: Colors.deepOrange,
+        backgroundColor: const Color(0xFF3D4E5C),
         foregroundColor: Colors.white,
         leading: Builder(
           builder: (context) => IconButton(
@@ -292,8 +292,8 @@ class _ManagerPortalScreenState extends State<ManagerPortalScreen> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Colors.deepOrange,
-                    Colors.deepOrangeAccent,
+                    Color(0xFF3D4E5C),
+                    Color(0xFF556B7D),
                   ],
                 ),
               ),
@@ -329,7 +329,7 @@ class _ManagerPortalScreenState extends State<ManagerPortalScreen> {
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.home_outlined, color: Colors.deepOrange),
+              leading: const Icon(Icons.home_outlined, color: Color(0xFF5E6E7C)),
               title: const Text('Overview'),
               selected: _currentView == 'overview',
               onTap: () {
@@ -341,7 +341,7 @@ class _ManagerPortalScreenState extends State<ManagerPortalScreen> {
             ListTile(
               leading: Icon(
                 Icons.cloud_outlined,
-                color: _isAdminLoggedIn ? Colors.blue : Colors.grey,
+                color: _isAdminLoggedIn ? const Color(0xFF5B8A9F) : Colors.grey,
               ),
               title: const Text('Future Weather & Crowd Forecasting'),
               subtitle: _isAdminLoggedIn
@@ -357,7 +357,7 @@ class _ManagerPortalScreenState extends State<ManagerPortalScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.analytics_outlined, color: Colors.green),
+              leading: const Icon(Icons.analytics_outlined, color: Color(0xFF8B956D)),
               title: const Text('Feedback Sentiment Analysis'),
               selected: _currentView == 'feedback',
               onTap: () {
@@ -366,7 +366,7 @@ class _ManagerPortalScreenState extends State<ManagerPortalScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.bar_chart_outlined, color: Colors.purple),
+              leading: const Icon(Icons.bar_chart_outlined, color: Color(0xFF7D6B91)),
               title: const Text('Visitor Arrival Analysis'),
               selected: _currentView == 'visitors',
               onTap: () {
@@ -377,7 +377,7 @@ class _ManagerPortalScreenState extends State<ManagerPortalScreen> {
             const Divider(),
             if (!_isAdminLoggedIn)
               ListTile(
-                leading: const Icon(Icons.login, color: Colors.orange),
+                leading: const Icon(Icons.login, color: Color(0xFF6B7C8A)),
                 title: const Text('Admin Login'),
                 onTap: () async {
                   Navigator.pop(context);
