@@ -75,6 +75,9 @@ class _ChatBottomSheetState extends State<ChatBottomSheet>
     "Boulder Gardens": "boulder_gardens.jpg",
     "Mirror Wall": "mirror_wall.jpg",
     "Sigiriya Museum": "sigiriya_museum.jpg",
+    "Pahangala": "pahangala.jpg",
+    "Aligala Caves": "aligala_caves.jpg",
+    "Rock Shelter": "rock_shelter.jpg",
   };
   late AnimationController _animationController;
 

@@ -18,6 +18,9 @@ class NavigationService {
     'Mirror Wall': {'lat': 7.958299235097665, 'lng': 80.75714009323848},
     'Frescoes': {'lat': 7.958199235097665, 'lng': 80.75704009323848},
     'Summit': {'lat': 7.958911891209235, 'lng': 80.75722173247165},
+    'Pahangala': {'lat': 7.95898, 'lng': 80.75776},
+    'Aligala Caves': {'lat': 7.95781, 'lng': 80.76061},
+    'Rock Shelter': {'lat': 7.95636, 'lng': 80.75941},
   };
 
   /// Opens Google Maps navigation to the specified destination
@@ -26,7 +29,7 @@ class NavigationService {
   /// [currentLatitude] - Current user latitude (optional)
   /// [currentLongitude] - Current user longitude (optional)
   static Future<bool> openGoogleMapsNavigation({
-    required String destinationName,
+    required String destinationName,     //navigation  to  the  destination  with  current location details
     double? currentLatitude,
     double? currentLongitude,
   }) async {

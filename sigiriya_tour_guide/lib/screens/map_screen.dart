@@ -135,6 +135,24 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       'category': 'Historical Site',
       'visitOrder': 11,
     },
+    'Pahangala': {
+      'position': const LatLng(7.95898, 80.75776),
+      'icon': Icons.terrain,
+      'category': 'Nature Spot',
+      'visitOrder': 12,
+    },
+    'Aligala Caves': {
+      'position': const LatLng(7.95781, 80.76061),
+      'icon': Icons.explore,
+      'category': 'Historical Site',
+      'visitOrder': 13,
+    },
+    'Rock Shelter': {
+      'position': const LatLng(7.95636, 80.75941),
+      'icon': Icons.cottage,
+      'category': 'Historical Site',
+      'visitOrder': 14,
+    },
   };
 
   final List<String> _categories = [
@@ -546,7 +564,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                     ),
                   );
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(context).showSnackBar(        //  popap  massege  for detect current location details
                     const SnackBar(
                       content: Text('Please enter valid coordinates'),
                       backgroundColor: Colors.red,
@@ -579,7 +597,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
     if (!skipPopups) {
       _checkArrival(position);
-      _predictLocationWithML(position); // Call the Railway deployed ML API
+      _predictLocationWithML(position);
     }
   }
 
@@ -868,7 +886,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   void _checkArrival(LatLng userPos) {
     // Check if within 20 meters of ANY attraction (as per test requirements)
     String? foundAttraction;
-    double minDistance = double.infinity;
+    double minDistance = double.infinity;   // Call the Railway deployed ML API ################################################
     
     _attractions.forEach((name, data) {
       final targetPos = data['position'] as LatLng;
@@ -1532,7 +1550,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   IconData _getProgressIcon() {
-    final progress = _getVisitedCount() / 11;
+    final progress = _getVisitedCount() / 14;
     if (progress >= 1.0) return Icons.emoji_events; // Trophy for completion
     if (progress >= 0.8) return Icons.star; // Star for high progress
     if (progress >= 0.5) return Icons.explore; // Explorer icon for mid progress
@@ -1542,7 +1560,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   Widget _getAchievementBadge() {
     final visitedCount = _getVisitedCount();
     
-    if (visitedCount >= 11) {
+    if (visitedCount >= 14) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
@@ -1596,7 +1614,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   Color _getProgressColor() {
-    final progress = _getVisitedCount() / 11;
+    final progress = _getVisitedCount() / 14;
     if (progress >= 1.0) return Colors.amber; // Gold for completion
     if (progress >= 0.8) return Colors.purple; // Purple for high progress
     if (progress >= 0.5) return Colors.blue; // Blue for mid progress
@@ -1605,20 +1623,20 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   String _getMotivationalMessage() {
     final visitedCount = _getVisitedCount();
-    final remaining = 11 - visitedCount;
+    final remaining = 14 - visitedCount;
     
     switch (visitedCount) {
       case 0:
-        return "🚀 Start your adventure! 11 amazing places await discovery!";
+        return "🚀 Start your adventure! 14 amazing places await discovery!";
       case 1:
         return "🎉 Great start! ${remaining} more incredible locations to explore!";
       case >= 2 && < 5:
         return "🌟 You're doing amazing! Keep exploring - ${remaining} locations left!";
       case >= 5 && < 8:
         return "🔥 Halfway there! Only ${remaining} more places to complete your journey!";
-      case >= 8 && < 11:
+      case >= 8 && < 14:
         return "⭐ Almost there! Just ${remaining} more location${remaining == 1 ? '' : 's'} to become a true Sigiriya Explorer!";
-      case 11:
+      case 14:
         return "🏆 CONGRATULATIONS! You've become a Sigiriya Master Explorer!";
       default:
         return "🗺️ Continue your amazing journey through Sigiriya!";
@@ -1627,7 +1645,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   String _getCompactMotivationalMessage() {
     final visitedCount = _getVisitedCount();
-    final remaining = 11 - visitedCount;
+    final remaining = 14 - visitedCount;
     
     switch (visitedCount) {
       case 1:
@@ -1636,9 +1654,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         return "🌟 Keep going! ${remaining} locations left!";
       case >= 5 && < 8:
         return "🔥 Halfway there! ${remaining} more to go!";
-      case >= 8 && < 11:
+      case >= 8 && < 14:
         return "⭐ Almost done! Just ${remaining} more!";
-      case 11:
+      case 14:
         return "🏆 Master Explorer achieved!";
       default:
         return "Continue exploring Sigiriya!";
@@ -1697,7 +1715,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 child: Column(
                   children: [
                     Text(
-                      '${_getVisitedCount()} out of 11 locations discovered!',
+                      '${_getVisitedCount()} out of 14 locations discovered!',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -1706,7 +1724,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                     ),
                     const SizedBox(height: 12),
                     LinearProgressIndicator(
-                      value: _getVisitedCount() / 11,
+                      value: _getVisitedCount() / 14,
                       backgroundColor: Colors.white.withOpacity(0.3),
                       valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
@@ -1740,7 +1758,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         return '🔥 Achievement Unlocked: Discoverer!';
       case 8:
         return '⭐ Achievement Unlocked: Adventurer!';
-      case 11:
+      case 14:
         return '🏆 Achievement Unlocked: Sigiriya Master!';
       default:
         return '✨ Keep exploring to unlock achievements!';
