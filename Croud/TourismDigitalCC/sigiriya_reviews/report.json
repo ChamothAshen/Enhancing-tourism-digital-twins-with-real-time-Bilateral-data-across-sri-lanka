@@ -1,0 +1,85 @@
+{
+  "summary": {
+    "total_reviews": 217,
+    "positive": 187,
+    "neutral": 26,
+    "negative": 4,
+    "negative_percentage": 1.8
+  },
+  "top_problems_found": [
+    [
+      "value for money",
+      18
+    ],
+    [
+      "safety concerns",
+      17
+    ],
+    [
+      "poor accessibility and infrastructure",
+      12
+    ],
+    [
+      "ticketing delays and booking problems",
+      6
+    ],
+    [
+      "overcrowding and long queues",
+      5
+    ],
+    [
+      "staff behavior and service quality",
+      5
+    ],
+    [
+      "facility maintenance and cleanliness",
+      4
+    ]
+  ],
+  "sample_bad_reviews": [
+    {
+      "text": "Definitely skip this place! Nothing is marked or explained, so you can’t really understand or imagine how it looked in the past. You basically stand on top, look at three rows of stacked bricks and on",
+      "issues": [
+        {
+          "issue": "poor accessibility and infrastructure",
+          "confidence": 1.0
+        },
+        {
+          "issue": "safety concerns",
+          "confidence": 0.74
+        }
+      ]
+    },
+    {
+      "text": "This place is overhyped in my opinion. If you are someone who doesn't enjoy trekking much then you can avoid it. The view after reaching the rock is good though but it's a difficult journey, you liter",
+      "issues": [
+        {
+          "issue": "poor accessibility and infrastructure",
+          "confidence": 0.88
+        }
+      ]
+    },
+    {
+      "text": "It's an ancient rock fortress in northern bank of Central province, located in Matale Distric. I feel there is no proper regulatory body to observe and direct foreign and local spectators. Therefore t",
+      "issues": [
+        {
+          "issue": "poor accessibility and infrastructure",
+          "confidence": 0.66
+        },
+        {
+          "issue": "safety concerns",
+          "confidence": 0.6
+        }
+      ]
+    },
+    {
+      "text": "Current ticket price for foreigners is $36 (Jan. 2024). It is a bit high to see ruins.\nThere are no elevator to get to the summit, you'll have to walk the stairs. Bring plenty of water, this is not wa",
+      "issues": [
+        {
+          "issue": "value for money",
+          "confidence": 0.98
+        }
+      ]
+    }
+  ]
+}

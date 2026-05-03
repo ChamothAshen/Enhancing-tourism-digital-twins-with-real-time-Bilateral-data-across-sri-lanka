@@ -1,0 +1,2 @@
+@echo off
+"D:\USER DATA\Documents\Enhancing-tourism-digital-twins-with-real-time-Bilateral-data-across-sri-lanka\.venv\Scripts\python.exe" "D:\USER DATA\Documents\Enhancing-tourism-digital-twins-with-real-time-Bilateral-data-across-sri-lanka\croud\TourismDigitalCC\sigiriya_reviews\run.py"
