@@ -343,11 +343,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               ),
             ],
           ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+          content: SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.5,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Predefined locations dropdown
                 const Text(
@@ -516,6 +519,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 ),
               ],
             ),
+          ),
           ),
           actions: [
             TextButton(
@@ -1344,8 +1348,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       markers.add(
         Marker(
           point: data['position'] as LatLng,
-          width: isCurrentStep ? 90 : 80, // Cleaner, more compact markers
-          height: isCurrentStep ? 90 : 80,
+          width: isCurrentStep ? 120 : 80,
+          height: isCurrentStep ? 120 : 80,
           child: GestureDetector(
             onTap: () {
               setState(() {
