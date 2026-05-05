@@ -30,6 +30,15 @@ class _ReviewsDashboardScreenState extends State<ReviewsDashboardScreen> {
         centerTitle: true,
         elevation: 0,
         backgroundColor: const Color(0xFF8B4513),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.warning, color: Color(0xFFE53935)),
+            tooltip: 'Show Negative Reviews & Solutions',
+            onPressed: () {
+              Navigator.pushNamed(context, '/negative-reviews');
+            },
+          ),
+        ],
       ),
       body: FutureBuilder<List<ReviewData>>(
         future: _reviewsFuture,

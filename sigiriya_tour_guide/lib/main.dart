@@ -5,6 +5,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'model_viewer_screen.dart';
 import 'screens/reviews_dashboard_screen.dart';
+import 'screens/negative_reviews_screen.dart';
 
 // ===== TESTING MODE =====
 // Set this to true to use mock location for testing
@@ -34,6 +35,9 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
       ),
       home: const MainNavigationScreen(),
+      routes: {
+        '/negative-reviews': (context) => const NegativeReviewsScreen(),
+      },
     );
   }
 }
@@ -317,7 +321,7 @@ class _HomePageState extends State<HomePage> {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
+                          color: Colors.black.withOpacity(0.2),
                           blurRadius: 8,
                         ),
                       ],
@@ -364,12 +368,12 @@ class _HomePageState extends State<HomePage> {
 
     // User location circle
     if (_lastPosition != null) {
-      circles.add(
+          circles.add(
         Circle(
           circleId: const CircleId('user_radius'),
           center: LatLng(_lastPosition!.latitude, _lastPosition!.longitude),
           radius: triggerRadiusMeters,
-          fillColor: Colors.blue.withValues(alpha: 0.1),
+          fillColor: Colors.blue.withOpacity(0.1),
           strokeColor: Colors.blue,
           strokeWidth: 2,
         ),
@@ -506,7 +510,7 @@ class _HomePageState extends State<HomePage> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.teal.withValues(alpha: 0.1),
+                    color: Colors.teal.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(

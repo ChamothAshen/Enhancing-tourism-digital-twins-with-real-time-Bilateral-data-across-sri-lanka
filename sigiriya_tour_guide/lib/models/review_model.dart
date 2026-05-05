@@ -8,6 +8,7 @@ class ReviewData {
   final double sentimentConfidence;
   final List<Issue> issues;
   final List<Case> casesUsed;
+  final String? recommendation;
 
   ReviewData({
     required this.id,
@@ -19,6 +20,7 @@ class ReviewData {
     required this.sentimentConfidence,
     required this.issues,
     required this.casesUsed,
+    this.recommendation,
   });
 
   factory ReviewData.fromJson(Map<String, dynamic> json) {
@@ -38,6 +40,7 @@ class ReviewData {
               ?.map((case_) => Case.fromJson(case_))
               .toList() ??
           [],
+      recommendation: json['recommendation'],
     );
   }
 }

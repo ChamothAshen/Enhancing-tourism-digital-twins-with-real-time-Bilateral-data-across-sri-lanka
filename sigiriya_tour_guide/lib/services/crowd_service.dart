@@ -20,22 +20,47 @@ class CrowdService {
       'mongodb+srv://dinusha_nawarathne:Dinuser24@cluster0.pgj82ff.mongodb.net/$_databaseName?retryWrites=true&w=majority&appName=Cluster0';
 
   Db? _db;
+  bool _connecting = false;
 
   /// Ensure we have an active connection to MongoDB Atlas.
   Future<void> _ensureConnected() async {
     if (_db != null && _db!.isConnected) return;
 
+    // If a connection attempt is already in progress, wait for it to finish.
+    if (_connecting) {
+      final start = DateTime.now();
+      while (_connecting) {
+        await Future.delayed(const Duration(milliseconds: 200));
+        if (_db != null && _db!.isConnected) return;
+        if (DateTime.now().difference(start) > const Duration(seconds: 10)) {
+          break; // timeout waiting for connect
+        }
+      }
+    }
+
     try {
-      _db = await Db.create(_mongoUri);
-      await _db!.open();
+      _connecting = true;
+      if (_db == null) {
+        _db = await Db.create(_mongoUri);
+      }
+
+      if (!_db!.isConnected) {
+        await _db!.open();
+      }
+
       debugPrint('Connected to MongoDB Atlas (database: $_databaseName)');
 
       final collections = await _db!.getCollectionNames();
       debugPrint('Available collections: $collections');
     } catch (e) {
       debugPrint('Failed to connect to MongoDB: $e');
+      try {
+        await _db?.close();
+      } catch (_) {}
       _db = null;
       rethrow;
+    } finally {
+      _connecting = false;
     }
   }
 
