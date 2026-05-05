@@ -49,6 +49,7 @@ dependencies:
   provider: ^6.1.2
   url_launcher: ^6.3.1
   fl_chart: ^1.1.1
+  package_info_plus: ^8.3.1
 
 dev_dependencies:
   flutter_test:
@@ -85,6 +86,12 @@ flutter:
     - assets/data/sigiriya_smart_categorized_reviews.csv
     - assets/data/global_tourism_problem_solution_dataset.csv
     - assets/data/sigiriya_visitor_arrival.csv
+<<<<<<< HEAD
+=======
+    - assets/data/reviews_analyzed.json
+    - assets/data/reviews_with_recommendations.json
+    - .env
+>>>>>>> Merged_SadiniAndTharushi
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

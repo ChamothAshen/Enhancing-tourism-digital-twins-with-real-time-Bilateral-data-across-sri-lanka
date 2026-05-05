@@ -1,0 +1,118 @@
+{
+  "summary": {
+    "total_reviews": 782,
+    "positive": 597,
+    "neutral": 168,
+    "negative": 17,
+    "negative_percentage": 2.2
+  },
+  "top_problems_found": [
+    [
+      "value for money",
+      127
+    ],
+    [
+      "safety concerns",
+      51
+    ],
+    [
+      "poor accessibility and infrastructure",
+      41
+    ],
+    [
+      "overcrowding and long queues",
+      23
+    ],
+    [
+      "staff behavior and service quality",
+      10
+    ],
+    [
+      "facility maintenance and cleanliness",
+      9
+    ],
+    [
+      "ticketing delays and booking problems",
+      6
+    ]
+  ],
+  "sample_bad_reviews": [
+    {
+      "text": "The entrance fee is $35. We only wanted to look from below without going up, but we weren't allowed in. Okay, I understand. We arrived by motorbike, and even then, a bunch of tuk-tuk drivers approache",
+      "issues": [
+        {
+          "issue": "poor accessibility and infrastructure",
+          "confidence": 0.96
+        },
+        {
+          "issue": "safety concerns",
+          "confidence": 0.79
+        },
+        {
+          "issue": "overcrowding and long queues",
+          "confidence": 0.72
+        },
+        {
+          "issue": "staff behavior and service quality",
+          "confidence": 0.65
+        },
+        {
+          "issue": "ticketing delays and booking problems",
+          "confidence": 0.56
+        }
+      ]
+    },
+    {
+      "text": "When we got to the entrance, we saw $35 for tourists and 20 cents for locals. It costs more than one of the Seven Wonders of the World. The most scammy attraction in Sri Lanka. Go to the mountain next",
+      "issues": [
+        {
+          "issue": "poor accessibility and infrastructure",
+          "confidence": 0.68
+        }
+      ]
+    },
+    {
+      "text": "It's just the rock and I dont see a logic why would you spend €30-€40 to climb it. Same views or even better it's little brother Pidurangala ,cost 10 times less and it's much more authentic then Lion ",
+      "issues": [
+        {
+          "issue": "poor accessibility and infrastructure",
+          "confidence": 0.42
+        }
+      ]
+    },
+    {
+      "text": "I want to give this 5 stars but the people absolutely ruined it. We had to come on a Sunday out of necessity and its a day that many local families come through which wasn’t an issue for us since we a",
+      "issues": [
+        {
+          "issue": "overcrowding and long queues",
+          "confidence": 0.98
+        },
+        {
+          "issue": "poor accessibility and infrastructure",
+          "confidence": 0.67
+        },
+        {
+          "issue": "safety concerns",
+          "confidence": 0.57
+        }
+      ]
+    },
+    {
+      "text": "DON'T go there, place is overrun by people and the whole experience is basically 90% waiting. The same narrow stairs are used for both going up & down, leading to congestions the whole time & if there",
+      "issues": [
+        {
+          "issue": "overcrowding and long queues",
+          "confidence": 1.0
+        },
+        {
+          "issue": "safety concerns",
+          "confidence": 1.0
+        },
+        {
+          "issue": "poor accessibility and infrastructure",
+          "confidence": 1.0
+        }
+      ]
+    }
+  ]
+}

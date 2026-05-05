@@ -1,410 +1,354 @@
 import 'package:flutter/material.dart';
-import 'feedback_data.dart';
+import '../models/review_model.dart';
+import 'review_detail_screen.dart';
 
 class IssueDetailScreen extends StatefulWidget {
-  final IssueType issueType;
-  final FeedbackDataManager dataManager;
+  final String issueType;
+  final List<ReviewData> reviews;
+  final int totalNegativeReviews;
 
   const IssueDetailScreen({
-    super.key,
+    Key? key,
     required this.issueType,
-    required this.dataManager,
-  });
+    required this.reviews,
+    required this.totalNegativeReviews,
+  }) : super(key: key);
 
   @override
   State<IssueDetailScreen> createState() => _IssueDetailScreenState();
 }
 
-class _IssueDetailScreenState extends State<IssueDetailScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _IssueDetailScreenState extends State<IssueDetailScreen> {
+  late List<ReviewData> _filteredReviews;
+  String _sortBy = 'recent'; // recent, rating, confidence
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _filteredReviews = List.from(widget.reviews);
+    _sortReviews();
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+  void _sortReviews() {
+    switch (_sortBy) {
+      case 'rating':
+        _filteredReviews.sort((a, b) => a.rating.compareTo(b.rating));
+        break;
+      case 'confidence':
+        // Sort by max confidence of issues
+        _filteredReviews.sort((a, b) {
+          double maxConfA = a.issues.isEmpty
+              ? 0
+              : a.issues.map((e) => e.confidence).reduce((x, y) => x > y ? x : y);
+          double maxConfB = b.issues.isEmpty
+              ? 0
+              : b.issues.map((e) => e.confidence).reduce((x, y) => x > y ? x : y);
+          return maxConfB.compareTo(maxConfA);
+        });
+        break;
+      default:
+        // Keep original order (recent)
+        break;
+    }
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    final feedbackList =
-        widget.dataManager.getFeedbacksByCategory(widget.issueType.id);
-    final solutionList =
-        widget.dataManager.getSolutionsByIssueType(widget.issueType.id);
-
-    // Group solutions by description
-    final Map<String, List<Solution>> groupedSolutions = {};
-    for (var s in solutionList) {
-      final key = s.solutionDescription.trim();
-      groupedSolutions.putIfAbsent(key, () => []).add(s);
-    }
-
-    final uniqueSolutions = groupedSolutions.values.toList();
+    final percentage =
+        (widget.reviews.length / widget.totalNegativeReviews * 100)
+            .toStringAsFixed(1);
 
     return Scaffold(
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          SliverAppBar(
-            expandedHeight: 180,
-            pinned: true,
-            backgroundColor: widget.issueType.color,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      widget.issueType.color,
-                      widget.issueType.color.withOpacity(0.7),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            widget.issueType.icon,
-                            color: Colors.white,
-                            size: 28,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                widget.issueType.name,
-                                style: const TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${feedbackList.length} feedbacks',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.white.withOpacity(0.9),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            bottom: TabBar(
-              controller: _tabController,
-              indicatorColor: Colors.white,
-              indicatorWeight: 3,
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.white70,
-              tabs: [
-                Tab(
-                  icon: const Icon(Icons.comment, size: 20),
-                  text: 'Feedbacks (${feedbackList.length})',
-                ),
-                Tab(
-                  icon: const Icon(Icons.lightbulb, size: 20),
-                  text: 'Solutions (${uniqueSolutions.length})',
-                ),
-              ],
-            ),
-          ),
-        ],
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            _FeedbackListTab(
-              feedbacks: feedbackList,
-              color: widget.issueType.color,
-            ),
-            _SolutionsTab(
-              groupedSolutions: groupedSolutions,
-              color: widget.issueType.color,
-            ),
-          ],
-        ),
+      appBar: AppBar(
+        title: Text(widget.issueType),
+        backgroundColor: const Color(0xFF8B4513),
+        elevation: 0,
       ),
-    );
-  }
-}
-
-/// -----------------------------------
-/// Feedback Tab
-/// -----------------------------------
-class _FeedbackListTab extends StatelessWidget {
-  final List<FeedbackItem> feedbacks;
-  final Color color;
-
-  const _FeedbackListTab({
-    required this.feedbacks,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (feedbacks.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.inbox, size: 64, color: Colors.grey[300]),
-            const SizedBox(height: 16),
-            Text(
-              'No feedbacks found',
-              style: TextStyle(fontSize: 16, color: Colors.grey[500]),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: feedbacks.length,
-      itemBuilder: (context, index) {
-        final feedback = feedbacks[index];
-        return _FeedbackCard(
-          feedback: feedback,
-          index: index + 1,
-          color: color,
-        );
-      },
-    );
-  }
-}
-
-class _FeedbackCard extends StatelessWidget {
-  final FeedbackItem feedback;
-  final int index;
-  final Color color;
-
-  const _FeedbackCard({
-    required this.feedback,
-    required this.index,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+      body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: color.withOpacity(0.15),
-                  child: Text(
-                    '$index',
-                    style: TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.bold, color: color),
+            // Header Section
+            Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: Color(0xFF8B4513),
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Affected Reviews',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelLarge
+                                  ?.copyWith(color: Colors.white70),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              widget.reviews.length.toString(),
+                              style: const TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '$percentage%',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'of all negative reviews',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: Colors.white70),
+                  ),
+                ],
+              ),
+            ),
+
+            // Sort Options
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Sort by',
+                    style: Theme.of(context)
+                        .textTheme
+                        .labelMedium
+                        ?.copyWith(color: Colors.grey),
+                  ),
+                  const SizedBox(height: 8),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
                     child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: List.generate(5, (i) {
-                        return Icon(
-                          i < feedback.rating ? Icons.star : Icons.star_border,
-                          size: 14,
-                          color: color,
-                        );
-                      }),
+                      children: [
+                        _buildSortButton('Recent', 'recent'),
+                        const SizedBox(width: 8),
+                        _buildSortButton('Rating', 'rating'),
+                        const SizedBox(width: 8),
+                        _buildSortButton('Confidence', 'confidence'),
+                      ],
                     ),
                   ),
-                ),
-                const Spacer(),
-                Text(
-                  feedback.date.split(' ')[0],
-                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                ),
-              ],
+                ],
+              ),
             ),
-            const SizedBox(height: 14),
-            Text(
-              feedback.reviewText,
-              style: const TextStyle(fontSize: 14, height: 1.5),
+
+            // Reviews List
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _filteredReviews.length,
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  return _buildReviewCard(context, _filteredReviews[index]);
+                },
+              ),
             ),
+            const SizedBox(height: 16),
           ],
         ),
       ),
     );
   }
-}
 
-/// -----------------------------------
-/// Solutions Tab
-/// -----------------------------------
-class _SolutionsTab extends StatelessWidget {
-  final Map<String, List<Solution>> groupedSolutions;
-  final Color color;
+  Widget _buildSortButton(String label, String value) {
+    final isSelected = _sortBy == value;
+    return ElevatedButton(
+      onPressed: () {
+        setState(() {
+          _sortBy = value;
+          _sortReviews();
+        });
+      },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: isSelected ? const Color(0xFF8B4513) : Colors.grey[300],
+        foregroundColor: isSelected ? Colors.white : Colors.black,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      ),
+      child: Text(label),
+    );
+  }
 
-  const _SolutionsTab({
-    required this.groupedSolutions,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final uniqueSolutions = groupedSolutions.values.toList();
-
-    if (uniqueSolutions.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.lightbulb_outline, size: 64, color: Colors.grey[300]),
-            const SizedBox(height: 16),
-            Text('No solutions available',
-                style: TextStyle(color: Colors.grey[500])),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: uniqueSolutions.length,
-      itemBuilder: (context, index) {
-        final solList = uniqueSolutions[index];
-        final solution = solList[0];
-        final countries = solList.map((s) => s.country).toSet();
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            gradient: LinearGradient(
-              colors: [color.withOpacity(0.08), Colors.white],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              )
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                /// HEADER
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(Icons.lightbulb, color: color),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(solution.solution,
-                          style: const TextStyle(
-                              fontSize: 17, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-
-                /// Countries
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: countries.map((c) {
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.blue.withOpacity(0.25)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.public, size: 14, color: Colors.blue),
-                          const SizedBox(width: 4),
-                          Text(c,
-                              style: const TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.w500)),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 14),
-
-                /// Description
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(10),
-                    border: const Border(
-                      left: BorderSide(color: Colors.green, width: 3),
-                    ),
-                  ),
-                  child: Text(solution.solutionDescription,
-                      style: const TextStyle(fontSize: 14, height: 1.5)),
-                ),
-                const SizedBox(height: 12),
-
-                Row(
-                  children: [
-                    const Icon(Icons.travel_explore, size: 16, color: Colors.grey),
-                    const SizedBox(width: 6),
-                    Text("${countries.length} countries implemented this",
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                  ],
-                ),
-              ],
-            ),
+  Widget _buildReviewCard(BuildContext context, ReviewData review) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ReviewDetailScreen(review: review),
           ),
         );
       },
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: _getReviewBorderColor(review.rating),
+              width: 2,
+            ),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Author and Rating
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        review.author,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF333333),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        review.time,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.star,
+                        color: _getReviewBorderColor(review.rating),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${review.rating}/5',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: _getReviewBorderColor(review.rating),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Review Text
+              Text(
+                review.text,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF666666),
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Issues Tags
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: review.issues.take(3).map((issue) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE53935).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: const Color(0xFFE53935).withOpacity(0.3),
+                      ),
+                    ),
+                    child: Text(
+                      issue.issue,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFFE53935),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 12),
+
+              // View Details Button
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            ReviewDetailScreen(review: review),
+                      ),
+                    );
+                  },
+                  child: const Text('View Solutions →'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
+  }
+
+  Color _getReviewBorderColor(int rating) {
+    if (rating >= 4) return const Color(0xFF4CAF50);
+    if (rating >= 3) return const Color(0xFFFBC02D);
+    return const Color(0xFFE53935);
   }
 }
