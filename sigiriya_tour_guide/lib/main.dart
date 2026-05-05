@@ -4,8 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'model_viewer_screen.dart';
-import 'screens/feedback_dashboard_screen.dart';
-import 'screens/visitor_arrival_screen.dart';
+import 'screens/reviews_dashboard_screen.dart';
 
 // ===== TESTING MODE =====
 // Set this to true to use mock location for testing
@@ -65,8 +64,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     _screens = [
       HomePage(key: _homeKey),
       const ModelViewerScreen(),
-      const FeedbackDashboardScreen(),
-      const VisitorArrivalScreen(),
+      const ReviewsDashboardScreen(),
+      const PlaceholderScreen(title: 'Visitor Analytics'),
     ];
   }
 
@@ -750,5 +749,42 @@ class _HomePageState extends State<HomePage> {
         _isShowingNotification = false;
       }
     });
+  }
+}
+
+class PlaceholderScreen extends StatelessWidget {
+  final String title;
+
+  const PlaceholderScreen({
+    Key? key,
+    required this.title,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.construction,
+            size: 64,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            '$title',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Coming Soon',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey,
+                ),
+          ),
+        ],
+      ),
+    );
   }
 }

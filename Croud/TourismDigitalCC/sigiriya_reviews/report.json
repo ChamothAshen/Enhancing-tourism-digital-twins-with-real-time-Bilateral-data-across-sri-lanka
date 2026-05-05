@@ -1,83 +1,116 @@
 {
   "summary": {
-    "total_reviews": 217,
-    "positive": 187,
-    "neutral": 26,
-    "negative": 4,
-    "negative_percentage": 1.8
+    "total_reviews": 782,
+    "positive": 597,
+    "neutral": 168,
+    "negative": 17,
+    "negative_percentage": 2.2
   },
   "top_problems_found": [
     [
       "value for money",
-      18
+      127
     ],
     [
       "safety concerns",
-      17
+      51
     ],
     [
       "poor accessibility and infrastructure",
-      12
+      41
+    ],
+    [
+      "overcrowding and long queues",
+      23
+    ],
+    [
+      "staff behavior and service quality",
+      10
+    ],
+    [
+      "facility maintenance and cleanliness",
+      9
     ],
     [
       "ticketing delays and booking problems",
       6
-    ],
-    [
-      "overcrowding and long queues",
-      5
-    ],
-    [
-      "staff behavior and service quality",
-      5
-    ],
-    [
-      "facility maintenance and cleanliness",
-      4
     ]
   ],
   "sample_bad_reviews": [
     {
-      "text": "Definitely skip this place! Nothing is marked or explained, so you can’t really understand or imagine how it looked in the past. You basically stand on top, look at three rows of stacked bricks and on",
+      "text": "The entrance fee is $35. We only wanted to look from below without going up, but we weren't allowed in. Okay, I understand. We arrived by motorbike, and even then, a bunch of tuk-tuk drivers approache",
       "issues": [
         {
           "issue": "poor accessibility and infrastructure",
+          "confidence": 0.96
+        },
+        {
+          "issue": "safety concerns",
+          "confidence": 0.79
+        },
+        {
+          "issue": "overcrowding and long queues",
+          "confidence": 0.72
+        },
+        {
+          "issue": "staff behavior and service quality",
+          "confidence": 0.65
+        },
+        {
+          "issue": "ticketing delays and booking problems",
+          "confidence": 0.56
+        }
+      ]
+    },
+    {
+      "text": "When we got to the entrance, we saw $35 for tourists and 20 cents for locals. It costs more than one of the Seven Wonders of the World. The most scammy attraction in Sri Lanka. Go to the mountain next",
+      "issues": [
+        {
+          "issue": "poor accessibility and infrastructure",
+          "confidence": 0.68
+        }
+      ]
+    },
+    {
+      "text": "It's just the rock and I dont see a logic why would you spend €30-€40 to climb it. Same views or even better it's little brother Pidurangala ,cost 10 times less and it's much more authentic then Lion ",
+      "issues": [
+        {
+          "issue": "poor accessibility and infrastructure",
+          "confidence": 0.42
+        }
+      ]
+    },
+    {
+      "text": "I want to give this 5 stars but the people absolutely ruined it. We had to come on a Sunday out of necessity and its a day that many local families come through which wasn’t an issue for us since we a",
+      "issues": [
+        {
+          "issue": "overcrowding and long queues",
+          "confidence": 0.98
+        },
+        {
+          "issue": "poor accessibility and infrastructure",
+          "confidence": 0.67
+        },
+        {
+          "issue": "safety concerns",
+          "confidence": 0.57
+        }
+      ]
+    },
+    {
+      "text": "DON'T go there, place is overrun by people and the whole experience is basically 90% waiting. The same narrow stairs are used for both going up & down, leading to congestions the whole time & if there",
+      "issues": [
+        {
+          "issue": "overcrowding and long queues",
           "confidence": 1.0
         },
         {
           "issue": "safety concerns",
-          "confidence": 0.74
-        }
-      ]
-    },
-    {
-      "text": "This place is overhyped in my opinion. If you are someone who doesn't enjoy trekking much then you can avoid it. The view after reaching the rock is good though but it's a difficult journey, you liter",
-      "issues": [
-        {
-          "issue": "poor accessibility and infrastructure",
-          "confidence": 0.88
-        }
-      ]
-    },
-    {
-      "text": "It's an ancient rock fortress in northern bank of Central province, located in Matale Distric. I feel there is no proper regulatory body to observe and direct foreign and local spectators. Therefore t",
-      "issues": [
-        {
-          "issue": "poor accessibility and infrastructure",
-          "confidence": 0.66
+          "confidence": 1.0
         },
         {
-          "issue": "safety concerns",
-          "confidence": 0.6
-        }
-      ]
-    },
-    {
-      "text": "Current ticket price for foreigners is $36 (Jan. 2024). It is a bit high to see ruins.\nThere are no elevator to get to the summit, you'll have to walk the stairs. Bring plenty of water, this is not wa",
-      "issues": [
-        {
-          "issue": "value for money",
-          "confidence": 0.98
+          "issue": "poor accessibility and infrastructure",
+          "confidence": 1.0
         }
       ]
     }

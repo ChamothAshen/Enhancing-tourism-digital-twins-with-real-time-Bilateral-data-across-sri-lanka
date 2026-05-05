@@ -1,50 +1,33 @@
 # rag_recommender.py
 import json
 import os
+import time
 import chromadb
 from sentence_transformers import SentenceTransformer
 from tavily import TavilyClient
 from groq import Groq
+from dotenv import load_dotenv
 
-# ── Put your API keys here ────────────────────────────────────────────────────
-TAVILY_API_KEY = "tvly-your-key-here"
-GROQ_API_KEY   = "gsk_your-key-here"
+load_dotenv()
 
-tavily      = TavilyClient(api_key="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")
-groq_client = Groq(api_key="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")
-embedder    = SentenceTransformer("all-MiniLM-L6-v2")
+TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
+GROQ_API_KEY   = os.getenv("GROQ_API_KEY")
+GROQ_MODEL     = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
 
-# Try to initialize ChromaDB, if it fails due to permissions, set to None
-chroma      = None
-collection  = None
-try:
-    script_dir  = os.path.dirname(os.path.abspath(__file__))
-    chroma      = chromadb.PersistentClient(path=os.path.join(script_dir, "chroma_db"))
-    try:
-        collection  = chroma.get_collection("tourism_cases")
-    except Exception as e:
-        print(f"WARNING: Could not load chroma collection: {e}")
-        collection = None
-except Exception as e:
-    print(f"WARNING: Could not initialize ChromaDB (permissions issue): {str(e)[:100]}")
-    chroma = None
-    collection = None
+tavily   = TavilyClient(api_key=TAVILY_API_KEY)
+groq_client = Groq(api_key=GROQ_API_KEY)
 
-# ── Confidence thresholds ─────────────────────────────────────────────────────
-# above 0.75 → use knowledge base only
-# 0.40-0.75  → combine knowledge base + web search
-# below 0.40 → web search only
+embedder   = SentenceTransformer("all-MiniLM-L6-v2")
+chroma     = chromadb.PersistentClient(path="./chroma_db")
+collection = chroma.get_collection("tourism_cases")
+
 HIGH_CONFIDENCE   = 0.75
 MEDIUM_CONFIDENCE = 0.40
 
 
-# ── Layer 1: Knowledge base retrieval ─────────────────────────────────────────
+# ── Retrieval ─────────────────────────────────────────────────────────────────
 
 def retrieve_from_kb(complaint_text, issues, top_k=3):
-    """Search ChromaDB for most similar case studies."""
-    if collection is None:
-        return []
-    
     issue_names     = [i["issue"] for i in issues]
     query           = f"Tourist complaint: {', '.join(issue_names)}. Review: {complaint_text}"
     query_embedding = embedder.encode(query).tolist()
@@ -77,17 +60,14 @@ def retrieve_from_kb(complaint_text, issues, top_k=3):
     return cases, best_score
 
 
-# ── Layer 2/3: Web search ─────────────────────────────────────────────────────
-
 def search_web_for_cases(complaint_text, issues):
-    """Search web for real tourism management solutions."""
     issue_names = [i["issue"] for i in issues]
     query = (
-        f"tourism site management solution for {', '.join(issue_names[:2])} "
-        f"heritage site world best practice case study"
+        f"tourism heritage site management solution "
+        f"{', '.join(issue_names[:2])} best practice case study"
     )
 
-    print(f"    Searching web: {query}")
+    print(f"    Web search: {query[:60]}...")
 
     try:
         results   = tavily.search(
@@ -100,24 +80,22 @@ def search_web_for_cases(complaint_text, issues):
 
         if results.get("answer"):
             web_cases.append({
-                "country":       "Multiple sources",
-                "site":          "Web research",
-                "problem":       f"Similar to: {', '.join(issue_names)}",
-                "solution":      results["answer"],
-                "strategy_type": "web_sourced",
-                "similarity":    None,
-                "source":        "web_search"
+                "country":   "Multiple sources",
+                "site":      "Web research",
+                "problem":   f"Similar to: {', '.join(issue_names)}",
+                "solution":  results["answer"],
+                "similarity": None,
+                "source":    "web_search"
             })
 
         for r in results.get("results", [])[:3]:
             web_cases.append({
-                "country":       "Web source",
-                "site":          r.get("url", ""),
-                "problem":       f"Related to: {', '.join(issue_names)}",
-                "solution":      r.get("content", "")[:500],
-                "strategy_type": "web_sourced",
-                "similarity":    None,
-                "source":        "web_search"
+                "country":   "Web source",
+                "site":      r.get("url", ""),
+                "problem":   f"Related to: {', '.join(issue_names)}",
+                "solution":  r.get("content", "")[:500],
+                "similarity": None,
+                "source":    "web_search"
             })
 
         return web_cases
@@ -127,10 +105,7 @@ def search_web_for_cases(complaint_text, issues):
         return []
 
 
-# ── Decision engine ───────────────────────────────────────────────────────────
-
 def decide_layer(best_score):
-    """Decide which layer to use based on similarity score."""
     if best_score >= HIGH_CONFIDENCE:
         return "layer_1_kb_only", "HIGH"
     elif best_score >= MEDIUM_CONFIDENCE:
@@ -139,93 +114,144 @@ def decide_layer(best_score):
         return "layer_3_web_only", "LOW"
 
 
-# ── LLM generation using Groq ─────────────────────────────────────────────────
+# ── Generation ────────────────────────────────────────────────────────────────
 
 def generate_recommendation(complaint_text, issues, cases, confidence_label, layer_used):
-    """Generate a recommendation using Groq's free Llama model."""
     issue_names = [i["issue"] for i in issues]
 
+    # Format case studies
     cases_text = ""
     for i, case in enumerate(cases[:4]):
-        sim_str     = f"(similarity: {case['similarity']})" if case["similarity"] else "(from web search)"
+        sim_str = (
+            f"(similarity: {case['similarity']})"
+            if case.get("similarity") else "(from web search)"
+        )
         cases_text += f"""
-Reference {i+1} — {case['country']}, {case['site']} {sim_str}
-Problem they faced: {case['problem']}
-Solution they used: {case['solution']}
+Example {i+1} — {case['country']}, {case['site']} {sim_str}
+Problem: {case['problem']}
+Solution: {case['solution']}
 """
 
-    if layer_used == "layer_1_kb_only":
-        instruction = "The following case studies are highly relevant. Use them as your primary reference."
-    elif layer_used == "layer_2_hybrid":
-        instruction = "The following references combine knowledge base cases and web research. Synthesize carefully."
-    else:
-        instruction = "No strong matches found in knowledge base. The following comes from web research. Be cautious and general."
+    prompt = f"""You are a tourism management assistant helping officers 
+at Sigiriya Rock Fortress, Sri Lanka (UNESCO World Heritage Site).
 
-    prompt = f"""You are a tourism management consultant for Sigiriya Rock Fortress, Sri Lanka — a UNESCO World Heritage site.
+Important:
+- Use the case studies only as inspiration.
+- Convert every idea into a Sri Lanka-implementable action.
+- Explain it in simple, human language.
+- Prefer low-cost actions using current staff, signage, queue control, simple booking rules, local transport coordination, and site management changes.
+- Do NOT recommend expensive systems unless there is a realistic low-cost version for Sri Lanka.
+- The final solution must feel like advice for a site manager in Sri Lanka, not a global report.
 
-Visitor complaint:
+A visitor left this complaint:
 "{complaint_text}"
 
-Detected problems: {issue_names}
+Main problems: {issue_names}
 
-{instruction}
-
+Real examples from other countries that solved similar problems:
 {cases_text}
 
-Write a specific practical recommendation for Sigiriya management. Structure it exactly as:
+Write a clear practical solution for the Sigiriya site officer.
+First say the global idea in one short sentence.
+Then explain exactly how that idea can be done at Sigiriya in Sri Lanka.
+Use this exact format:
 
-CORE ISSUE: (one sentence naming the problem)
-REFERENCE: (which country approach is most relevant and why)
-RECOMMENDATION: (3-4 concrete action steps adapted to Sigiriya)
-EXPECTED OUTCOME: (what improvement to expect)
+🔴 PROBLEM:
+[One short sentence — what is the visitor complaining about]
 
-Keep under 250 words. Be direct. Adapt everything to Sri Lanka context."""
+🌍 WHAT OTHER COUNTRIES DID:
+[Pick the most relevant example above. Say which country and site.
+Explain what they did and what result they got in 1-2 simple sentences.
+Keep this part short.]
 
-    response = groq_client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        max_tokens=500,
-        messages=[{"role": "user", "content": prompt}]
-    )
+✅ WHAT SIGIRIYA SHOULD DO:
 
-    return response.choices[0].message.content
+THIS WEEK:
+- [very simple action 1 that Sigiriya staff can start now]
+- [very simple action 2 that Sigiriya staff can start now]
+
+THIS MONTH:
+- [action 1 that can be done in 30 days with local staff/resources]
+- [action 2 that can be done in 30 days with local staff/resources]
+
+IN 3 MONTHS:
+- [bigger action based on the global idea, adapted to Sri Lanka]
+- [how to do it with Sri Lankan staff, rules, and budget limits]
+
+SRI LANKA IMPLEMENTATION NOTES:
+- Mention the local actor who should do it (site staff, SLTDA, police, ticket counter, guides, tuk-tuk area, etc.)
+- Mention the lowest-cost way to start
+- Mention how to measure success at Sigiriya
+- Mention the exact place at Sigiriya if possible
+- Keep sentences short and easy to understand
+
+Rules:
+- Simple English only
+- Specific to Sigiriya Sri Lanka
+- Practical and realistic
+- Maximum 250 words
+- No complicated academic language"""
+
+    # Retry up to 3 times if Groq fails
+    for attempt in range(3):
+        try:
+            response = groq_client.chat.completions.create(
+                model=GROQ_MODEL,
+                temperature=0.4,
+                max_tokens=700,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a practical tourism operations advisor. Give clear, realistic actions."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            print(f"    Groq attempt {attempt+1} failed: {e}")
+            if attempt < 2:
+                time.sleep(5)
+
+    return "Could not generate recommendation — please try again."
 
 
-# ── Main pipeline for one review ──────────────────────────────────────────────
+# ── Main pipeline ─────────────────────────────────────────────────────────────
 
 def recommend_for_review(review):
-    """Full three-layer RAG pipeline for a single review."""
+    """Full RAG pipeline for one review."""
 
     # Skip positive reviews
-    if review["sentiment"] == "positive":
+    if review.get("sentiment") == "positive":
         return {**review, "recommendation": None, "layer_used": None}
 
     issues = review.get("issues", [])
     if not issues:
         return {**review, "recommendation": None, "layer_used": None}
 
-    complaint = review.get("translated_text", review["text"])
+    complaint = review.get("translated_text", review.get("text", ""))
     print(f"\n  Review: {complaint[:70]}...")
 
     # Step 1: Search knowledge base
     kb_cases, best_score = retrieve_from_kb(complaint, issues)
-    print(f"  Best KB similarity score: {best_score}")
+    print(f"  KB similarity: {best_score}")
 
-    # Step 2: Decide which layer
+    # Step 2: Decide layer
     layer_used, confidence_label = decide_layer(best_score)
-    print(f"  Layer selected: {layer_used} (confidence: {confidence_label})")
+    print(f"  Layer: {layer_used} ({confidence_label})")
 
-    # Step 3: Gather context based on layer
+    # Step 3: Gather context
     if layer_used == "layer_1_kb_only":
         all_cases = kb_cases
-
     elif layer_used == "layer_2_hybrid":
-        web_cases = search_web_for_cases(complaint, issues)
-        all_cases = kb_cases + web_cases
-
+        all_cases = kb_cases + search_web_for_cases(complaint, issues)
     else:
         all_cases = search_web_for_cases(complaint, issues)
 
-    # Step 4: Generate recommendation
+    # Step 4: Generate with Groq
     recommendation = generate_recommendation(
         complaint, issues, all_cases, confidence_label, layer_used
     )
@@ -240,25 +266,44 @@ def recommend_for_review(review):
     }
 
 
-# ── Batch processing ──────────────────────────────────────────────────────────
-
 def process_all_bad_reviews(
-    analyzed_file=None,
-    output_file=None
+    analyzed_file="reviews_analyzed.json",
+    output_file="reviews_with_recommendations.json",
+    reprocess_failed=True
 ):
-    import os
-    if analyzed_file is None:
-        analyzed_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reviews_analyzed.json")
-    if output_file is None:
-        output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reviews_with_recommendations.json")
-    
     with open(analyzed_file, encoding="utf-8") as f:
         reviews = json.load(f)
 
-    bad_reviews = [r for r in reviews if r["sentiment"] in ["negative", "neutral"]]
-    print(f"\nFound {len(bad_reviews)} negative/neutral reviews to process.")
+    # Load already processed to skip them
+    already_done = set()
+    results      = []
+    try:
+        with open(output_file, encoding="utf-8") as f:
+            existing     = json.load(f)
+            if reprocess_failed:
+                already_done = set(
+                    r["id"]
+                    for r in existing
+                    if r.get("recommendation")
+                    and not str(r.get("recommendation", "")).lower().startswith("could not generate recommendation")
+                )
+            else:
+                already_done = set(r["id"] for r in existing if r.get("recommendation"))
+            results      = existing
+        print(f"  Already processed: {len(already_done)} reviews")
+    except FileNotFoundError:
+        pass
 
-    results     = []
+    # Only process negative/neutral with issues that haven't been done yet
+    bad_reviews = [
+        r for r in reviews
+        if r.get("sentiment") in ["negative", "neutral"]
+        and r.get("issues")
+        and r["id"] not in already_done
+    ]
+
+    print(f"  Reviews left to process: {len(bad_reviews)}")
+
     layer_stats = {
         "layer_1_kb_only":  0,
         "layer_2_hybrid":   0,
@@ -267,27 +312,30 @@ def process_all_bad_reviews(
 
     for i, review in enumerate(bad_reviews):
         print(f"\n[{i+1}/{len(bad_reviews)}]")
-        result = recommend_for_review(review)
-        results.append(result)
+        try:
+            result = recommend_for_review(review)
+            results.append(result)
 
-        if result.get("layer_used"):
-            layer_stats[result["layer_used"]] += 1
+            if result.get("layer_used"):
+                layer_stats[result["layer_used"]] += 1
 
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(results, f, ensure_ascii=False, indent=2)
+            # Save after every single review — never lose progress
+            with open(output_file, "w", encoding="utf-8") as f:
+                json.dump(results, f, ensure_ascii=False, indent=2)
 
-    # Print layer statistics — this is your research finding for the viva
-    print("\n" + "=" * 50)
-    print("LAYER USAGE STATISTICS (your research finding)")
-    print("=" * 50)
+        except Exception as e:
+            print(f"  Error: {e}")
+            if "429" in str(e) or "quota" in str(e).lower():
+                print("  Rate limit hit. Progress saved. Run again to continue.")
+                break
+            continue
+
+    print(f"\n{'='*50}")
+    print("LAYER USAGE STATISTICS")
+    print("="*50)
     total = sum(layer_stats.values())
     for layer, count in layer_stats.items():
         pct = round(count / total * 100, 1) if total > 0 else 0
-        print(f"  {layer:25s}: {count} reviews ({pct}%)")
+        print(f"  {layer:25s}: {count} ({pct}%)")
 
-    print(f"\nFull results saved to {output_file}")
     return results, layer_stats
-
-
-if __name__ == "__main__":
-    process_all_bad_reviews()

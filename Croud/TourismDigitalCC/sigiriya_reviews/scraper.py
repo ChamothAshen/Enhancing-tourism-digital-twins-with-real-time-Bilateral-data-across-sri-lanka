@@ -8,7 +8,7 @@ from playwright.async_api import async_playwright
 SCRIPT_DIR    = os.path.dirname(os.path.abspath(__file__))
 SEEN_IDS_FILE = os.path.join(SCRIPT_DIR, "seen_ids.json")
 RAW_FILE      = os.path.join(SCRIPT_DIR, "reviews_raw.json")
-CUTOFF_DATE   = datetime.now() - timedelta(days=730)
+CUTOFF_DATE   = datetime.now() - timedelta(days=180)
 
 
 def load_seen_ids():
@@ -37,7 +37,7 @@ def save_all_reviews(reviews):
         json.dump(reviews, f, ensure_ascii=False, indent=2)
 
 
-def is_within_2_years(time_str):
+def is_within_6_months(time_str):
     if not time_str:
         return True
     time_str = time_str.lower().strip()
@@ -323,8 +323,11 @@ async def extract_visible_reviews(page):
 
 async def initial_scrape(headless=False):
     print("\n" + "="*50)
-    print("INITIAL SCRAPE — collecting all reviews from past 2 years")
+    print("INITIAL SCRAPE — collecting all reviews from past 6 months")
     print("="*50)
+
+    existing = load_existing_reviews()
+    existing_by_id = {r["id"]: r for r in existing if "id" in r}
 
     async with async_playwright() as p:
         browser = await p.firefox.launch(
@@ -358,7 +361,7 @@ async def initial_scrape(headless=False):
             for r in batch:
                 if r["id"] in collected:
                     continue
-                if not is_within_2_years(r["time"]):
+                if not is_within_6_months(r["time"]):
                     print(f"  Reached old review ({r['time']}) — stopping")
                     stop = True
                     break
@@ -366,6 +369,13 @@ async def initial_scrape(headless=False):
                 collected[r["id"]] = r
 
             print(f"  Collected {len(collected)} reviews...")
+
+            # Persist progress after each batch so an interruption does not lose
+            # everything collected so far.
+            if len(collected) > prev_len:
+                all_reviews = list(collected.values())
+                save_all_reviews(all_reviews)
+                save_seen_ids(set(collected.keys()))
 
             if len(collected) > prev_len:
                 stall_count = 0
@@ -380,10 +390,14 @@ async def initial_scrape(headless=False):
 
         await browser.close()
 
-    all_reviews = list(collected.values())
+    # Merge with existing data so re-running initial scrape doesn't wipe history.
+    for review in collected.values():
+        existing_by_id[review["id"]] = review
+
+    all_reviews = list(existing_by_id.values())
     save_all_reviews(all_reviews)
 
-    seen_ids = set(r["id"] for r in all_reviews)
+    seen_ids = set(r["id"] for r in all_reviews if "id" in r)
     save_seen_ids(seen_ids)
 
     print(f"\nInitial scrape complete: {len(all_reviews)} reviews saved")
@@ -421,13 +435,16 @@ async def check_for_new_reviews(headless=True):
         # CRITICAL — sort by Newest so new reviews are at top
         sorted_ok = await sort_by_newest(page)
         if not sorted_ok:
-            print("  WARNING: Not sorted by Newest — may miss new reviews!")
+            print("  Could not confirm Newest sort. Skipping update check to avoid collecting relevant-order reviews.")
+            await browser.close()
+            return []
 
         # Take screenshot so you can verify it's sorted correctly
         await page.screenshot(path=os.path.join(SCRIPT_DIR, "check_screenshot.png"))
         print("  Saved check_screenshot.png — verify it shows Newest sort")
 
-        # Get top 20 reviews — no scrolling needed
+        # Get the visible newest block only. Stop at the first review we have
+        # already seen so we only append genuinely new items.
         top_reviews = await extract_visible_reviews(page)
         print(f"  Checked top {len(top_reviews)} reviews")
 
@@ -438,11 +455,13 @@ async def check_for_new_reviews(headless=True):
 
         await browser.close()
 
-    # Find genuinely new ones
-    new_reviews = [
-        r for r in top_reviews
-        if r["id"] not in seen_ids and is_within_2_years(r["time"])
-    ]
+    # Find genuinely new ones, but stop at the first already-seen review.
+    new_reviews = []
+    for r in top_reviews:
+        if r["id"] in seen_ids:
+            break
+        if is_within_6_months(r["time"]):
+            new_reviews.append(r)
 
     if not new_reviews:
         print("  No new reviews.")
@@ -456,7 +475,7 @@ async def check_for_new_reviews(headless=True):
 
     save_all_reviews(list(existing_by_id.values()))
 
-    seen_ids.update(r["id"] for r in top_reviews)
+    seen_ids.update(r["id"] for r in new_reviews)
     save_seen_ids(seen_ids)
 
     return new_reviews
