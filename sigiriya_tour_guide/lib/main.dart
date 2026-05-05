@@ -4,9 +4,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:sigiriya_tour_guide/screens/map_screen.dart';
 import 'package:sigiriya_tour_guide/theme/app_theme.dart';
 import 'package:sigiriya_tour_guide/providers/chat_provider.dart';
-import 'model_viewer_screen.dart';
 import 'screens/chat_screen.dart';
 import 'screens/admin_login_screen.dart';
+import 'screens/model_prediction_screen.dart';
+import 'model_viewer_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,16 +47,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     const MapScreen(),
     const ModelViewerScreen(),
     const ChatScreen(),
-  ];
-
-  final List<String> _titles = [
-    'Sigiriya Map Guide',
-    '3D Model Viewer',
-    'Tour Planner',
+    const ModelPredictionScreen(),
   ];
 
   void _onItemTapped(int index) {
-    if (index == 3) {
+    if (index == 4) {
       // Manager tab - navigate to admin login
       Navigator.pushNamed(context, '/manager');
     } else {
@@ -73,7 +69,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 10,
               offset: const Offset(0, -2),
             ),
@@ -98,6 +94,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               activeIcon: Icon(Icons.chat_bubble),
               label: 'Guide',
               tooltip: 'Chat with AI guide',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.psychology_alt_outlined),
+              activeIcon: Icon(Icons.psychology_alt),
+              label: 'Safety Risks',
+              tooltip: 'View trained model predictions',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.manage_accounts_outlined),

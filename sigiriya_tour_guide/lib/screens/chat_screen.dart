@@ -5,7 +5,6 @@ import 'package:flutter_tts/flutter_tts.dart';
 import '../config/api_config.dart';
 import 'admin_login_screen.dart';
 
-
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
 
@@ -599,13 +598,17 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                           ),
                         ),
                         PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert, color: Colors.white),
+                          icon: const Icon(
+                            Icons.more_vert,
+                            color: Colors.white,
+                          ),
                           onSelected: (value) {
                             if (value == 'admin') {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const AdminLoginScreen(),
+                                  builder: (context) =>
+                                      const AdminLoginScreen(),
                                 ),
                               );
                             }
@@ -615,8 +618,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                               value: 'admin',
                               child: Row(
                                 children: [
-                                  Icon(Icons.admin_panel_settings,
-                                      color: Colors.black54),
+                                  Icon(
+                                    Icons.admin_panel_settings,
+                                    color: Colors.black54,
+                                  ),
                                   SizedBox(width: 8),
                                   Text('Admin Login'),
                                 ],
@@ -1429,16 +1434,15 @@ class _ChatBubbleState extends State<_ChatBubble> {
     return items.isNotEmpty
         ? items
         : [
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  text,
-                  style: const TextStyle(
-                    color: Colors.black87,
-                    fontSize: 13,
-                    height: 1.6,
-                  ),
+            Container(
+              width: 220,
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                text,
+                style: const TextStyle(
+                  color: Colors.black87,
+                  fontSize: 13,
+                  height: 1.6,
                 ),
               ),
             ),
