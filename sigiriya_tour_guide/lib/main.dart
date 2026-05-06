@@ -7,7 +7,6 @@ import 'package:sigiriya_tour_guide/providers/chat_provider.dart';
 import 'screens/chat_screen.dart';
 import 'screens/admin_login_screen.dart';
 import 'screens/model_prediction_screen.dart';
-import 'screens/reviews_dashboard_screen.dart';
 import 'screens/negative_reviews_screen.dart';
 import 'model_viewer_screen.dart';
 
@@ -53,66 +52,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     const ModelViewerScreen(),
     const ChatScreen(),
     const ModelPredictionScreen(),
-    const ReviewsDashboardScreen(), // shown under Manager tab
   ];
 
   void _onItemTapped(int index) {
     if (index == 4) {
-      // Manager tab — show admin options
-      _showManagerMenu();
+      // Manager tab — go directly to admin login
+      Navigator.pushNamed(context, '/manager');
     } else {
-      setState(() {
-        _selectedIndex = index;
-      });
+      setState(() => _selectedIndex = index);
     }
-  }
-
-  void _showManagerMenu() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Manager Options',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            _ManagerOption(
-              icon: Icons.manage_accounts,
-              label: 'Admin Dashboard',
-              subtitle: 'Login to admin panel',
-              color: Colors.teal,
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/manager');
-              },
-            ),
-            const SizedBox(height: 12),
-            _ManagerOption(
-              icon: Icons.analytics_outlined,
-              label: 'Review Analysis',
-              subtitle: 'Visitor feedback & AI action plans',
-              color: const Color(0xFF8B4513),
-              onTap: () {
-                Navigator.pop(context);
-                setState(() => _selectedIndex = 4);
-              },
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
   }
 
   @override
@@ -159,75 +107,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               label: 'Manager',
             ),
           ],
-          currentIndex: _selectedIndex > 3 ? 4 : _selectedIndex,
+          currentIndex: _selectedIndex,
           selectedItemColor: AppTheme.primaryGreen,
           unselectedItemColor: Colors.grey,
           type: BottomNavigationBarType.fixed,
           onTap: _onItemTapped,
           showSelectedLabels: true,
           showUnselectedLabels: true,
-        ),
-      ),
-    );
-  }
-}
-
-// ── Manager menu option tile ──────────────────────────────────────────────────
-class _ManagerOption extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String subtitle;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _ManagerOption({
-    required this.icon,
-    required this.label,
-    required this.subtitle,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.2)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label,
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 2),
-                  Text(subtitle,
-                      style: TextStyle(
-                          fontSize: 12, color: Colors.grey[600])),
-                ],
-              ),
-            ),
-            Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey[400]),
-          ],
         ),
       ),
     );

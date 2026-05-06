@@ -86,12 +86,6 @@ flutter:
     - assets/data/sigiriya_smart_categorized_reviews.csv
     - assets/data/global_tourism_problem_solution_dataset.csv
     - assets/data/sigiriya_visitor_arrival.csv
-<<<<<<< HEAD
-=======
-    - assets/data/reviews_analyzed.json
-    - assets/data/reviews_with_recommendations.json
-    - .env
->>>>>>> Merged_SadiniAndTharushi
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
